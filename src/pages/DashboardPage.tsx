@@ -486,17 +486,17 @@ function DashboardPage() {
       if (!patientForm.name.trim()) throw new Error('El nombre del paciente es obligatorio')
       const saved = editingPatientId
         ? await updatePatient(editingPatientId, {
-            name: patientForm.name.trim(),
-            phone: patientForm.phone || null,
-            email: patientForm.email || null,
-            code: patientForm.code || null,
-          })
+          name: patientForm.name.trim(),
+          phone: patientForm.phone || null,
+          email: patientForm.email || null,
+          code: patientForm.code || null,
+        })
         : await createPatient({
-            name: patientForm.name.trim(),
-            phone: patientForm.phone || null,
-            email: patientForm.email || null,
-            code: patientForm.code || null,
-          })
+          name: patientForm.name.trim(),
+          phone: patientForm.phone || null,
+          email: patientForm.email || null,
+          code: patientForm.code || null,
+        })
 
       // Si abrimos el modal de paciente desde el modal de trabajo, seleccionar el paciente creado
       if (pendingPatientSelection && saved?.id) {
@@ -590,7 +590,10 @@ function DashboardPage() {
                           .map((p) => (
                             <SelectItem key={p.id} value={p.id}>
                               <div className="flex items-center justify-between w-full">
-                                <span>{p.name}</span>
+                                <div className="flex items-center gap-3">
+                                  <span className="w-12 text-right text-xs text-slate-500">{p.code || '-'}</span>
+                                  <span className="truncate">{p.name}</span>
+                                </div>
                                 <small className="text-xs text-slate-400">{p.phone || ''}</small>
                               </div>
                             </SelectItem>
