@@ -577,7 +577,7 @@ function DashboardPage() {
                       <SelectTrigger>
                       {form.patient_id ? (
                         <div className="flex items-center gap-2 w-full justify-start">
-                          <span className="w-10 text-left text-xs text-slate-500">{patients.find((p) => p.id === form.patient_id)?.code || '-'}</span>
+                          <span className="w-10 text-right text-xs text-slate-500">{patients.find((p) => p.id === form.patient_id)?.code || '-'}</span>
                           <span className="flex-1 truncate text-sm text-slate-700 text-left">
                             {patients.find((p) => p.id === form.patient_id)?.name}
                           </span>
