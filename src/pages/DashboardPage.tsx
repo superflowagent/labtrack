@@ -574,9 +574,14 @@ function DashboardPage() {
                       onValueChange={(value) => setForm((prev) => ({ ...prev, patient_id: value }))}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Selecciona un paciente" />
+                        <div className="flex items-center gap-3 w-full">
+                          <span className="w-10 text-right text-xs text-slate-500">{patients.find((p) => p.id === form.patient_id)?.code || '-'}</span>
+                          <span className="flex-1 truncate">
+                            <SelectValue placeholder="Selecciona un paciente" />
+                          </span>
+                        </div>
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="!p-0">
                         <div className="p-2">
                           <Input
                             value={patientQuery}
@@ -588,10 +593,10 @@ function DashboardPage() {
                         {patients
                           .filter((p) => p.name.toLowerCase().includes(patientQuery.toLowerCase()))
                           .map((p) => (
-                            <SelectItem key={p.id} value={p.id}>
+                            <SelectItem key={p.id} value={p.id} className="pl-1">
                               <div className="flex items-center justify-between w-full">
-                                <div className="flex items-center gap-3">
-                                  <span className="w-12 text-right text-xs text-slate-500">{p.code || '-'}</span>
+                                <div className="flex items-center gap-2">
+                                  <span className="w-10 text-right text-xs text-slate-500">{p.code || '-'}</span>
                                   <span className="truncate">{p.name}</span>
                                 </div>
                                 <small className="text-xs text-slate-400">{p.phone || ''}</small>
@@ -832,7 +837,7 @@ function DashboardPage() {
                     setFilters((f) => ({ ...f, sortBy: f.sortBy === 'paciente' ? 'paciente_desc' : 'paciente' }))
                   }}
                 >
-                  Paciente
+                  Paciente {filters.sortBy.startsWith('paciente') ? (filters.sortBy === 'paciente' ? '▲' : '▼') : ''}
                 </TableHead>
                 <TableHead
                   className="cursor-pointer"
@@ -840,7 +845,7 @@ function DashboardPage() {
                     setFilters((f) => ({ ...f, sortBy: f.sortBy === 'trabajo' ? 'trabajo_desc' : 'trabajo' }))
                   }}
                 >
-                  Trabajo
+                  Trabajo {filters.sortBy.startsWith('trabajo') ? (filters.sortBy === 'trabajo' ? '▲' : '▼') : ''}
                 </TableHead>
                 <TableHead
                   className="cursor-pointer"
@@ -848,7 +853,7 @@ function DashboardPage() {
                     setFilters((f) => ({ ...f, sortBy: f.sortBy === 'laboratorio' ? 'laboratorio_desc' : 'laboratorio' }))
                   }}
                 >
-                  Laboratorio
+                  Laboratorio {filters.sortBy.startsWith('laboratorio') ? (filters.sortBy === 'laboratorio' ? '▲' : '▼') : ''}
                 </TableHead>
                 <TableHead
                   className="cursor-pointer"
@@ -856,7 +861,7 @@ function DashboardPage() {
                     setFilters((f) => ({ ...f, sortBy: f.sortBy === 'especialista' ? 'especialista_desc' : 'especialista' }))
                   }}
                 >
-                  Especialista
+                  Especialista {filters.sortBy.startsWith('especialista') ? (filters.sortBy === 'especialista' ? '▲' : '▼') : ''}
                 </TableHead>
                 <TableHead
                   className="cursor-pointer"
@@ -864,7 +869,7 @@ function DashboardPage() {
                     setFilters((f) => ({ ...f, sortBy: f.sortBy === 'estado' ? 'estado_desc' : 'estado' }))
                   }}
                 >
-                  Estado
+                  Estado {filters.sortBy.startsWith('estado') ? (filters.sortBy === 'estado' ? '▲' : '▼') : ''}
                 </TableHead>
                 <TableHead>Salida trabajo</TableHead>
                 <TableHead>Transcurrido</TableHead>
@@ -913,7 +918,12 @@ function DashboardPage() {
                       }}
                       className="cursor-pointer hover:bg-slate-50"
                     >
-                      <TableCell className="font-medium pl-6">{patients.find((p) => p.id === job.patient_id)?.name || '-'}</TableCell>
+                      <TableCell className="font-medium pl-6">
+                        <div className="flex items-center gap-3">
+                          <span className="w-10 text-right text-xs text-slate-500">{patients.find((p) => p.id === job.patient_id)?.code || '-'}</span>
+                          <span>{patients.find((p) => p.id === job.patient_id)?.name || '-'}</span>
+                        </div>
+                      </TableCell>
                       <TableCell>{job.job_description || 'Sin descripcion'}</TableCell>
                       <TableCell>{labs.find((lab) => lab.id === job.laboratory_id)?.name || '-'}</TableCell>
                       <TableCell>{specialists.find((spec) => spec.id === job.specialist_id)?.name || '-'}</TableCell>
