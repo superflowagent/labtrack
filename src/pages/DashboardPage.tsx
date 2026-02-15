@@ -1,6 +1,7 @@
 import { format, formatDistanceToNow, parseISO, differenceInCalendarDays } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { normalizeSearch } from '@/lib/utils'
 import { Calendar as CalendarIcon, ClipboardPlus, FlaskConical, Stethoscope, UserRound, Clock, CalendarCheck, Archive } from 'lucide-react'
 import { Filtros } from '@/components/Filtros'
 import { Button } from '@/components/ui/button'
@@ -203,8 +204,9 @@ function DashboardPage() {
   const jobsForElapsed = useMemo(() => {
     return jobs.filter((job) => {
       const patient = patients.find((p) => p.id === job.patient_id)
-      const matchPaciente = filters.paciente
-        ? (patient?.name?.toLowerCase() || '').includes(filters.paciente.toLowerCase())
+      const query = normalizeSearch(filters.paciente)
+      const matchPaciente = query
+        ? (normalizeSearch(patient?.name).includes(query) || normalizeSearch(patient?.code).includes(query))
         : true
       const matchLab = filters.laboratorioId !== 'all' ? job.laboratory_id === filters.laboratorioId : true
       // Mostrar por defecto TODOS los estados excepto 'Cerrado'.
@@ -574,7 +576,7 @@ function DashboardPage() {
                     >
                       <SelectTrigger>
                       {form.patient_id ? (
-                        <div className="flex items-center gap-3 w-full justify-start">
+                        <div className="flex items-center gap-2 w-full justify-start">
                           <span className="w-10 text-left text-xs text-slate-500">{patients.find((p) => p.id === form.patient_id)?.code || '-'}</span>
                           <span className="flex-1 truncate text-sm text-slate-700 text-left">
                             {patients.find((p) => p.id === form.patient_id)?.name}
@@ -833,10 +835,10 @@ function DashboardPage() {
           <Table>
             <colgroup>
               <col style={{ width: '22%' }} />
-              <col style={{ width: '28%' }} />
+              <col style={{ width: '24%' }} />
+              <col style={{ width: '12%' }} />
               <col style={{ width: '15%' }} />
               <col style={{ width: '15%' }} />
-              <col style={{ width: '8%' }} />
               <col style={{ width: '6%' }} />
               <col style={{ width: '6%' }} />
             </colgroup>
@@ -851,7 +853,7 @@ function DashboardPage() {
                 }}>
                   Paciente {filters.sortBy === 'paciente' ? (filters.sortDir === 'asc' ? '▲' : '▼') : ''}
                 </TableHead>
-                <TableHead className="cursor-pointer" style={{ minWidth: 140 }} onClick={() => {
+                <TableHead className="cursor-pointer" style={{ minWidth: 120 }} onClick={() => {
                   setFilters((f) => ({
                     ...f,
                     sortBy: 'trabajo',
@@ -860,7 +862,7 @@ function DashboardPage() {
                 }}>
                   Trabajo {filters.sortBy === 'trabajo' ? (filters.sortDir === 'asc' ? '▲' : '▼') : ''}
                 </TableHead>
-                <TableHead className="cursor-pointer" style={{ minWidth: 140 }} onClick={() => {
+                <TableHead className="cursor-pointer" style={{ minWidth: 120 }} onClick={() => {
                   setFilters((f) => ({
                     ...f,
                     sortBy: 'laboratorio',
@@ -878,7 +880,7 @@ function DashboardPage() {
                 }}>
                   Especialista {filters.sortBy === 'especialista' ? (filters.sortDir === 'asc' ? '▲' : '▼') : ''}
                 </TableHead>
-                <TableHead className="cursor-pointer" style={{ minWidth: 100 }} onClick={() => {
+                <TableHead className="cursor-pointer" style={{ minWidth: 140 }} onClick={() => {
                   setFilters((f) => ({
                     ...f,
                     sortBy: 'estado',
