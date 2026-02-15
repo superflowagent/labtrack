@@ -89,8 +89,7 @@ const getStatusIcon = (status: string) => {
 }
 
 type JobForm = {
-  patient_name: string
-  patient_phone: string
+  patient_id: string
   job_description: string
   laboratory_id: string
   specialist_id: string
@@ -105,8 +104,7 @@ type BasicFilters = {
 }
 
 const getEmptyJobForm = (): JobForm => ({
-  patient_name: '',
-  patient_phone: '',
+  patient_id: '',
   job_description: '',
   laboratory_id: '',
   specialist_id: '',
@@ -196,8 +194,9 @@ function DashboardPage() {
 
   const jobsForElapsed = useMemo(() => {
     return jobs.filter((job) => {
+      const patient = patients.find((p) => p.id === job.patient_id)
       const matchPaciente = filters.paciente
-        ? job.patient_name.toLowerCase().includes(filters.paciente.toLowerCase())
+        ? (patient?.name?.toLowerCase() || '').includes(filters.paciente.toLowerCase())
         : true
       const matchLab = filters.laboratorioId !== 'all' ? job.laboratory_id === filters.laboratorioId : true
       // Mostrar por defecto TODOS los estados excepto 'Cerrado'.
@@ -221,11 +220,12 @@ function DashboardPage() {
     const getSpecName = (id: string | null) => specialists.find((spec) => spec.id === id)?.name || ''
 
     filtered = filtered.slice().sort((a, b) => {
+      const getPatientName = (id: string | null) => patients.find((p) => p.id === id)?.name || ''
       switch (filters.sortBy) {
         case 'paciente':
-          return a.patient_name.localeCompare(b.patient_name)
+          return getPatientName(a.patient_id).localeCompare(getPatientName(b.patient_id))
         case 'paciente_desc':
-          return b.patient_name.localeCompare(a.patient_name)
+          return getPatientName(b.patient_id).localeCompare(getPatientName(a.patient_id))
         case 'trabajo':
           return (a.job_description || '').localeCompare(b.job_description || '')
         case 'trabajo_desc':
@@ -274,8 +274,9 @@ function DashboardPage() {
     setFormError(null)
 
     try {
-      if (!form.patient_name.trim()) {
-        throw new Error('El nombre del paciente es obligatorio')
+
+      if (!form.patient_id) {
+        throw new Error('Selecciona un paciente')
       }
 
       const orderDateValue: string | null = !editingJobId && !orderDateInteracted
@@ -284,10 +285,9 @@ function DashboardPage() {
           ? format(form.order_date, 'yyyy-MM-dd')
           : null
 
+
       const payload = {
-        patient_name: form.patient_name.trim(),
-        patient_phone: form.patient_phone || null,
-        patient_id: null,
+        patient_id: form.patient_id,
         job_description: form.job_description || null,
         laboratory_id: form.laboratory_id || null,
         specialist_id: form.specialist_id || null,
@@ -340,9 +340,7 @@ function DashboardPage() {
       if (kind === 'job') {
         const job = item as Job
         await addJob({
-          patient_name: job.patient_name,
-          patient_phone: job.patient_phone || null,
-          patient_id: job.patient_id ?? null,
+          patient_id: job.patient_id ?? '',
           job_description: job.job_description || null,
           laboratory_id: job.laboratory_id || null,
           specialist_id: job.specialist_id || null,
@@ -558,19 +556,21 @@ function DashboardPage() {
               >
                 <div className="space-y-2">
                   <Label>Paciente</Label>
-                  <Input
-                    value={form.patient_name}
-                    onChange={(event) => setForm((prev) => ({ ...prev, patient_name: event.target.value }))}
-                    placeholder="Nombre del paciente"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Móvil</Label>
-                  <Input
-                    value={form.patient_phone}
-                    onChange={(event) => setForm((prev) => ({ ...prev, patient_phone: event.target.value }))}
-                    placeholder="Teléfono del paciente"
-                  />
+                  <Select
+                    value={form.patient_id}
+                    onValueChange={(value) => setForm((prev) => ({ ...prev, patient_id: value }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecciona un paciente" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {patients.map((p) => (
+                        <SelectItem key={p.id} value={p.id}>
+                          {p.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-2">
                   <Label>Trabajo</Label>
@@ -858,8 +858,7 @@ function DashboardPage() {
                       onClick={() => {
                         setEditingJobId(job.id)
                         setForm({
-                          patient_name: job.patient_name,
-                          patient_phone: job.patient_phone || '',
+                          patient_id: job.patient_id || '',
                           job_description: job.job_description || '',
                           laboratory_id: job.laboratory_id || '',
                           specialist_id: job.specialist_id || '',
@@ -871,7 +870,7 @@ function DashboardPage() {
                       }}
                       className="cursor-pointer hover:bg-slate-50"
                     >
-                      <TableCell className="font-medium pl-6">{job.patient_name}</TableCell>
+                      <TableCell className="font-medium pl-6">{patients.find((p) => p.id === job.patient_id)?.name || '-'}</TableCell>
                       <TableCell>{job.job_description || 'Sin descripcion'}</TableCell>
                       <TableCell>{labs.find((lab) => lab.id === job.laboratory_id)?.name || '-'}</TableCell>
                       <TableCell>{specialists.find((spec) => spec.id === job.specialist_id)?.name || '-'}</TableCell>

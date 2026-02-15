@@ -61,6 +61,7 @@ export const fetchPatients = async (clinicId: string) => {
 }
 
 export const createJob = async (job: NewJob) => {
+  // job sólo debe tener patient_id, no patient_name ni patient_phone
   const { data, error } = await supabase.from('jobs').insert(job).select('*').single()
   if (error) throw error
   return data as Job
@@ -103,6 +104,7 @@ export const createPatient = async (payload: { name: string; phone?: string | nu
 }
 
 export const updateJob = async (id: string, payload: Partial<NewJob>) => {
+  // payload sólo debe tener patient_id, no patient_name ni patient_phone
   const { data, error } = await supabase
     .from('jobs')
     .update(payload)
