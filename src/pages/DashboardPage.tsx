@@ -118,12 +118,22 @@ function DashboardPage() {
   const { jobs, labs, specialists, patients, loading, error, addJob, reload } = useJobs()
 
   // Reusable renderer for patient preview (keeps spacing consistent between trigger & list)
-  const PatientPreview = ({ patientId, placeholder = 'Seleccionar paciente' }: { patientId?: string; placeholder?: string }) => {
+  // - `inset` adds left padding useful for dropdown items
+  // - compact (default) reduces gap/min-width for the trigger so code and name sit closer
+  const PatientPreview = ({ patientId, placeholder = 'Seleccionar paciente', inset = false }: { patientId?: string; placeholder?: string; inset?: boolean }) => {
     const p = patients.find((x) => x.id === patientId)
+    const gapClass = inset ? 'gap-2' : 'gap-1'
+    // use a fixed width in the dropdown list so the name always starts at the same position
+    // ensure long codes are truncated (no overlap) and show full code on hover
+    const codeWidthClass = inset ? 'w-10 flex-none truncate whitespace-nowrap overflow-hidden' : 'min-w-[1.5rem]'
+
     return (
-      <div className="flex items-center gap-2 w-full justify-start">
-        <span className="min-w-[2.5rem] text-left text-xs text-slate-500">{p?.code ?? ''}</span>
-        <span className={(patientId ? 'text-slate-700 ' : 'text-slate-500 ') + 'flex-1 truncate text-sm'}>
+      <div className={`flex items-center ${gapClass} w-full justify-start ${inset ? 'pl-2' : ''}`}>
+        {/* Only reserve space for the code when a patient is selected */}
+        {patientId ? (
+          <span title={p?.code} className={`${codeWidthClass} text-left text-xs text-slate-500`}>{p?.code ?? ''}</span>
+        ) : null}
+        <span className={(patientId ? 'text-slate-700 ' : 'text-slate-500 ') + 'flex-1 truncate text-sm text-left'}>
           {p?.name ?? placeholder}
         </span>
       </div>
@@ -514,14 +524,23 @@ function DashboardPage() {
         })
 
       // Si abrimos el modal de paciente desde el modal de trabajo, seleccionar el paciente creado
+      let reopenJobModal = false
       if (pendingPatientSelection && saved?.id) {
         setForm((prev) => ({ ...prev, patient_id: saved.id }))
-        setPendingPatientSelection(false)
+        reopenJobModal = true
       }
 
+      // Cerrar modal paciente y limpiar formulario
       setPatientOpen(false)
       setEditingPatientId(null)
       setPatientForm({ name: '', phone: '', email: '', code: '' })
+
+      // Reabrir el modal de trabajo si vino desde allí
+      if (reopenJobModal) {
+        setOpen(true)
+        setPendingPatientSelection(false)
+      }
+
       await reload()
     } catch (err) {
       setPatientFormError(err instanceof Error ? err.message : 'No se pudo guardar')
@@ -603,8 +622,8 @@ function DashboardPage() {
                         {patients
                           .filter((p) => p.name.toLowerCase().includes(patientQuery.toLowerCase()))
                           .map((p) => (
-                            <SelectItem key={p.id} value={p.id} className="pl-1">
-                              <PatientPreview patientId={p.id} />
+                            <SelectItem key={p.id} value={p.id}>
+                              <PatientPreview patientId={p.id} inset />
                             </SelectItem>
                           ))}
                         {patients.filter((p) => p.name.toLowerCase().includes(patientQuery.toLowerCase())).length === 0 && (
@@ -616,6 +635,8 @@ function DashboardPage() {
                       type="button"
                       variant="outline"
                       onClick={() => {
+                        // Reemplaza temporalmente el modal de trabajo por el de paciente
+                        setOpen(false)
                         setPatientOpen(true)
                         setPendingPatientSelection(true)
                       }}
@@ -990,7 +1011,7 @@ function DashboardPage() {
                           })()}
                         </div>
                       </TableCell>
-                      <TableCell>{job.job_description || 'Sin descripcion'}</TableCell>
+                      <TableCell>{job.job_description || 'Sin descripción'}</TableCell>
                       <TableCell>{labs.find((lab) => lab.id === job.laboratory_id)?.name || '-'}</TableCell>
                       <TableCell>{specialists.find((spec) => spec.id === job.specialist_id)?.name || '-'}</TableCell>
                       <TableCell>
@@ -1251,9 +1272,11 @@ function DashboardPage() {
             onOpenChange={(value) => {
               setPatientOpen(value)
               if (!value) {
+                const wasPending = pendingPatientSelection
                 setEditingPatientId(null)
                 setPatientForm({ name: '', phone: '', email: '', code: '' })
                 setPendingPatientSelection(false)
+                if (wasPending) setOpen(true)
               }
             }}
           >
@@ -1266,7 +1289,7 @@ function DashboardPage() {
               <DialogHeader>
                 <DialogTitle>{editingPatientId ? 'Editar paciente' : 'Nuevo paciente'}</DialogTitle>
                 <DialogDescription>
-                  Completa la informacion del {editingPatientId ? 'paciente' : 'nuevo paciente'}
+                  Completa la información del {editingPatientId ? 'paciente' : 'nuevo paciente'}
                 </DialogDescription>
               </DialogHeader>
               <form
@@ -1277,11 +1300,11 @@ function DashboardPage() {
                 className="space-y-4"
               >
                 <div className="space-y-2">
-                  <Label>Codigo</Label>
+                  <Label>Código</Label>
                   <Input
                     value={patientForm.code}
                     onChange={(event) => setPatientForm((prev) => ({ ...prev, code: event.target.value }))}
-                    placeholder="Codigo del paciente"
+                    placeholder="Código del paciente"
                   />
                 </div>
                 <div className="space-y-2">
@@ -1293,11 +1316,11 @@ function DashboardPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Movil</Label>
+                  <Label>Móvil</Label>
                   <Input
                     value={patientForm.phone}
                     onChange={(event) => setPatientForm((prev) => ({ ...prev, phone: event.target.value }))}
-                    placeholder="Telefono del paciente"
+                    placeholder="Teléfono del paciente"
                   />
                 </div>
                 <div className="space-y-2">
