@@ -49,6 +49,11 @@ jobs:
           echo "migrations folder:"
           ls -la supabase/migrations || true
 
+      - name: Link Supabase project (CI)
+        run: |
+          echo "Linking Supabase project: $SUPABASE_PROJECT_REF"
+          supabase link --project-ref "$SUPABASE_PROJECT_REF"
+
       - name: Apply DB migrations (supabase db push)
         id: db_push
         run: |
