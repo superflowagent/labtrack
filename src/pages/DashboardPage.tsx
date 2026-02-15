@@ -203,9 +203,8 @@ function DashboardPage() {
   const jobsForElapsed = useMemo(() => {
     return jobs.filter((job) => {
       const patient = patients.find((p) => p.id === job.patient_id)
-      const query = filters.paciente?.toLowerCase() ?? ''
-      const matchPaciente = query
-        ? ((patient?.name?.toLowerCase() || '').includes(query) || (patient?.code?.toLowerCase() || '').includes(query))
+      const matchPaciente = filters.paciente
+        ? (patient?.name?.toLowerCase() || '').includes(filters.paciente.toLowerCase())
         : true
       const matchLab = filters.laboratorioId !== 'all' ? job.laboratory_id === filters.laboratorioId : true
       // Mostrar por defecto TODOS los estados excepto 'Cerrado'.
@@ -574,9 +573,9 @@ function DashboardPage() {
                       onValueChange={(value) => setForm((prev) => ({ ...prev, patient_id: value }))}
                     >
                       <SelectTrigger>
-                        <div className="flex items-center gap-3 w-full">
+                        <div className="flex items-center gap-3 w-full justify-start">
                           <span className="w-10 text-left text-xs text-slate-500">{patients.find((p) => p.id === form.patient_id)?.code || '-'}</span>
-                          <span className="flex-1 truncate text-sm text-slate-700">
+                          <span className="flex-1 truncate text-sm text-slate-700 text-left">
                             {form.patient_id ? patients.find((p) => p.id === form.patient_id)?.name : 'Selecciona un paciente'}
                           </span>
                         </div>
@@ -596,7 +595,7 @@ function DashboardPage() {
                             <SelectItem key={p.id} value={p.id} className="pl-1">
                               <div className="flex items-center justify-between w-full">
                                 <div className="flex items-center gap-2">
-                                  <span className="w-10 text-left text-xs text-slate-500">{p.code || '-'}</span>
+                                  <span className="w-10 text-right text-xs text-slate-500">{p.code || '-'}</span>
                                   <span className="truncate">{p.name}</span>
                                 </div>
                                 <small className="text-xs text-slate-400">{p.phone || ''}</small>
@@ -747,7 +746,7 @@ function DashboardPage() {
               <Input
                 value={filters.paciente}
                 onChange={(event) => setFilters((prev) => ({ ...prev, paciente: event.target.value }))}
-                placeholder="Buscar por nombre o código"
+                placeholder="Buscar por nombre"
               />
             </div>
             <div className="space-y-2">
@@ -934,7 +933,7 @@ function DashboardPage() {
                     >
                       <TableCell className="font-medium pl-6">
                         <div className="flex items-center gap-3">
-                          <span className="w-10 text-left text-xs text-slate-500">{patients.find((p) => p.id === job.patient_id)?.code || '-'}</span>
+                          <span className="w-10 text-right text-xs text-slate-500">{patients.find((p) => p.id === job.patient_id)?.code || '-'}</span>
                           <span>{patients.find((p) => p.id === job.patient_id)?.name || '-'}</span>
                         </div>
                       </TableCell>
