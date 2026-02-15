@@ -18,7 +18,15 @@ export default function LaboratoriesPage() {
     const [formError, setFormError] = useState<string | null>(null);
     const [filters, setFilters] = useState({ nombre: '' });
     useEffect(() => {
-        fetchLabs().then(setLabs);
+        (async () => {
+            try {
+                const clinicId = await getClinicIdForUser()
+                const labs = await fetchLaboratories(clinicId)
+                setLabs(labs)
+            } catch (err) {
+                console.error(err)
+            }
+        })()
     }, []);
 
     const handleCreate = async () => {
@@ -28,9 +36,10 @@ export default function LaboratoriesPage() {
             if (!form.name.trim()) {
                 throw new Error('El nombre del laboratorio es obligatorio');
             }
-            // Aquí deberías guardar el laboratorio en tu backend
+            const created = await createLaboratory({ name: form.name.trim(), phone: form.phone || null, email: form.email || null })
             setOpen(false);
             setForm({ name: '', phone: '', email: '' });
+            setLabs(prev => [created, ...prev])
         } catch (err) {
             setFormError(err instanceof Error ? err.message : 'No se pudo guardar');
         } finally {
@@ -53,7 +62,7 @@ export default function LaboratoriesPage() {
                             <DialogTitle>Nuevo laboratorio</DialogTitle>
                             <DialogDescription>Completa la información del nuevo laboratorio</DialogDescription>
                         </DialogHeader>
-                        <div className="space-y-4">
+                        <form onSubmit={async (e) => { e.preventDefault(); await handleCreate(); }} className="space-y-4">
                             <div className="space-y-2">
                                 <Label>Nombre</Label>
                                 <Input
@@ -79,10 +88,10 @@ export default function LaboratoriesPage() {
                                 />
                             </div>
                             {formError && <p className="text-sm text-rose-600">{formError}</p>}
-                            <Button onClick={handleCreate} disabled={saving} className="w-full bg-teal-600 text-white hover:bg-teal-500">
+                            <Button type="submit" disabled={saving} className="w-full bg-teal-600 text-white hover:bg-teal-500">
                                 {saving ? 'Guardando...' : 'Guardar laboratorio'}
                             </Button>
-                        </div>
+                        </form>
                     </DialogContent>
                 </Dialog>
             </div>
@@ -93,7 +102,7 @@ export default function LaboratoriesPage() {
                 showLaboratorio={false}
                 showEstado={false}
             />
-            <LaboratoriesTable labs={labs} />
+            <LaboratoriesTable labs={labs} filter={filters.nombre} />
         </div>
     );
 }
@@ -106,7 +115,15 @@ export function SpecialistsPage() {
     const [formError, setFormError] = useState<string | null>(null);
     const [filters, setFilters] = useState({ nombre: '' });
     useEffect(() => {
-        fetchSpecialists().then(setSpecialists);
+        (async () => {
+            try {
+                const clinicId = await getClinicIdForUser()
+                const specs = await fetchSpecialists(clinicId)
+                setSpecialists(specs)
+            } catch (err) {
+                console.error(err)
+            }
+        })()
     }, []);
 
     const handleCreate = async () => {
@@ -116,9 +133,10 @@ export function SpecialistsPage() {
             if (!form.name.trim()) {
                 throw new Error('El nombre del especialista es obligatorio');
             }
-            // Aquí deberías guardar el especialista en tu backend
+            const created = await createSpecialist({ name: form.name.trim(), specialty: form.specialty || null, phone: form.phone || null, email: form.email || null })
             setOpen(false);
             setForm({ name: '', specialty: '', phone: '', email: '' });
+            setSpecialists(prev => [created, ...prev])
         } catch (err) {
             setFormError(err instanceof Error ? err.message : 'No se pudo guardar');
         } finally {
@@ -141,7 +159,7 @@ export function SpecialistsPage() {
                             <DialogTitle>Nuevo especialista</DialogTitle>
                             <DialogDescription>Completa la información del nuevo especialista</DialogDescription>
                         </DialogHeader>
-                        <div className="space-y-4">
+                        <form onSubmit={async (e) => { e.preventDefault(); await handleCreate(); }} className="space-y-4">
                             <div className="space-y-2">
                                 <Label>Nombre</Label>
                                 <Input
@@ -175,10 +193,10 @@ export function SpecialistsPage() {
                                 />
                             </div>
                             {formError && <p className="text-sm text-rose-600">{formError}</p>}
-                            <Button onClick={handleCreate} disabled={saving} className="w-full bg-teal-600 text-white hover:bg-teal-500">
+                            <Button type="submit" disabled={saving} className="w-full bg-teal-600 text-white hover:bg-teal-500">
                                 {saving ? 'Guardando...' : 'Guardar especialista'}
                             </Button>
-                        </div>
+                        </form>
                     </DialogContent>
                 </Dialog>
             </div>
@@ -189,7 +207,7 @@ export function SpecialistsPage() {
                 showLaboratorio={false}
                 showEstado={false}
             />
-            <SpecialistsTable specialists={specialists} />
+            <SpecialistsTable specialists={specialists} filter={filters.nombre} />
         </div>
     );
 }

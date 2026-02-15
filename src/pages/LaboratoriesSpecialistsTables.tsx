@@ -4,13 +4,14 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import type { Laboratory, Specialist } from '@/types/domain';
 
 // Props: labs: Laboratory[]
-export function LaboratoriesTable({ labs }: { labs: Laboratory[] }) {
+export function LaboratoriesTable({ labs, filter }: { labs: Laboratory[]; filter?: string }) {
     const [sortBy, setSortBy] = useState<'name' | 'phone'>('name');
     const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
-    const [filter, setFilter] = useState('');
+
+    const appliedFilter = (filter || '').toLowerCase();
 
     const sortedLabs = useMemo(() => {
-        let filtered = labs.filter(lab => lab.name.toLowerCase().includes(filter.toLowerCase()));
+        let filtered = labs.filter(lab => lab.name.toLowerCase().includes(appliedFilter));
         filtered = filtered.sort((a, b) => {
             const aVal = a[sortBy] || '';
             const bVal = b[sortBy] || '';
@@ -66,13 +67,15 @@ export function LaboratoriesTable({ labs }: { labs: Laboratory[] }) {
 }
 
 // Props: specialists: Specialist[]
-export function SpecialistsTable({ specialists }: { specialists: Specialist[] }) {
+export function SpecialistsTable({ specialists, filter }: { specialists: Specialist[]; filter?: string }) {
     const [sortBy, setSortBy] = useState<'name' | 'specialty'>('name');
     const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
-    const [filter, setFilter] = useState('');
+
+    // `filter` prop will be passed from parent when used as a page table
+    const appliedSpecFilter = (filter || '').toLowerCase();
 
     const sortedSpecs = useMemo(() => {
-        let filtered = specialists.filter(s => s.name.toLowerCase().includes(filter.toLowerCase()));
+        let filtered = specialists.filter(s => s.name.toLowerCase().includes(appliedSpecFilter));
         filtered = filtered.sort((a, b) => {
             const aVal = a[sortBy] || '';
             const bVal = b[sortBy] || '';

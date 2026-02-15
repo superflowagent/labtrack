@@ -31,7 +31,7 @@ export const Filtros: React.FC<FiltrosProps> = ({
         <div className="grid gap-4 sm:grid-cols-4">
             {showPaciente && (
                 <div className="space-y-2">
-                    <Label>Paciente</Label>
+                    <Label>Buscar</Label>
                     <Input
                         value={filters.paciente || ''}
                         onChange={(event) => setFilters((prev: any) => ({ ...prev, paciente: event.target.value }))}

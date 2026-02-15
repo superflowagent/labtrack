@@ -1,4 +1,5 @@
 import { useMemo, useState, useEffect } from 'react'
+import { format } from 'date-fns'
 import { LaboratoriesTable, SpecialistsTable } from './LaboratoriesSpecialistsTables';
 // import { useLocation, useNavigate } from 'react-router-dom';
 import { getClinicForUser } from '@/services/supabase/clinic'
@@ -73,6 +74,11 @@ export const DashboardPage = () => {
     order_date: '',
     status: STATUSES[0],
   })
+  // Al abrir el modal de 'Nuevo trabajo' selecciona por defecto la fecha actual
+  useEffect(() => {
+    if (!open) return;
+    setForm(prev => prev.order_date ? prev : ({ ...prev, order_date: new Date().toISOString().slice(0, 10) }));
+  }, [open]);
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
 
@@ -213,7 +219,7 @@ export const DashboardPage = () => {
                 <DialogTitle>Nuevo trabajo</DialogTitle>
                 <DialogDescription>Completa la información del nuevo trabajo</DialogDescription>
               </DialogHeader>
-              <div className="space-y-4">
+              <form onSubmit={async (e) => { e.preventDefault(); await handleCreate(); }} className="space-y-4">
                 <div className="space-y-2">
                   <Label>Paciente</Label>
                   <Input
@@ -319,17 +325,17 @@ export const DashboardPage = () => {
                   </Select>
                 </div>
                 {formError && <p className="text-sm text-rose-600">{formError}</p>}
-                <Button onClick={handleCreate} disabled={saving} className="w-full bg-teal-600 text-white hover:bg-teal-500">
+                <Button type="submit" disabled={saving} className="w-full bg-teal-600 text-white hover:bg-teal-500">
                   {saving ? 'Guardando...' : 'Guardar trabajo'}
                 </Button>
-              </div>
+              </form>
             </DialogContent>
           </Dialog>
         </div>
         <Card className="mt-8 border-slate-200 bg-white/80 p-5">
           <div className="grid gap-4 sm:grid-cols-4">
             <div className="space-y-2">
-              <Label>Paciente</Label>
+              <Label>Buscar</Label>
               <Input
                 value={filters.paciente}
                 onChange={(event) => setFilters((prev) => ({ ...prev, paciente: event.target.value }))}
@@ -474,7 +480,7 @@ export const DashboardPage = () => {
                     <TableCell className="font-medium pl-6">{job.patient_name}</TableCell>
                     <TableCell>{job.job_description || 'Sin descripcion'}</TableCell>
                     <TableCell>{labs.find((lab) => lab.id === job.laboratory_id)?.name || '-'}</TableCell>
-                    <TableCell>{job.order_date || '-'}</TableCell>
+                    <TableCell>{job.order_date ? format(new Date(job.order_date), 'dd-MM-yyyy') : '-'}</TableCell>
                     <TableCell>
                       <span className="rounded-full bg-teal-50 px-3 py-1 text-xs font-medium text-teal-700">
                         {job.status}
@@ -504,7 +510,7 @@ export const DashboardPage = () => {
                 <DialogTitle>Nuevo laboratorio</DialogTitle>
                 <DialogDescription>Completa la información del nuevo laboratorio</DialogDescription>
               </DialogHeader>
-              <div className="space-y-4">
+              <form onSubmit={async (e) => { e.preventDefault(); await handleCreateLab(); }} className="space-y-4">
                 <div className="space-y-2">
                   <Label>Nombre</Label>
                   <Input
@@ -530,10 +536,10 @@ export const DashboardPage = () => {
                   />
                 </div>
                 {labFormError && <p className="text-sm text-rose-600">{labFormError}</p>}
-                <Button onClick={handleCreateLab} disabled={labSaving} className="w-full bg-teal-600 text-white hover:bg-teal-500">
+                <Button type="submit" disabled={labSaving} className="w-full bg-teal-600 text-white hover:bg-teal-500">
                   {labSaving ? 'Guardando...' : 'Guardar laboratorio'}
                 </Button>
-              </div>
+              </form>
             </DialogContent>
           </Dialog>
         </div>
@@ -563,7 +569,7 @@ export const DashboardPage = () => {
                 <DialogTitle>Nuevo especialista</DialogTitle>
                 <DialogDescription>Completa la información del nuevo especialista</DialogDescription>
               </DialogHeader>
-              <div className="space-y-4">
+              <form onSubmit={async (e) => { e.preventDefault(); await handleCreateSpec(); }} className="space-y-4">
                 <div className="space-y-2">
                   <Label>Nombre</Label>
                   <Input
@@ -597,10 +603,10 @@ export const DashboardPage = () => {
                   />
                 </div>
                 {specFormError && <p className="text-sm text-rose-600">{specFormError}</p>}
-                <Button onClick={handleCreateSpec} disabled={specSaving} className="w-full bg-teal-600 text-white hover:bg-teal-500">
+                <Button type="submit" disabled={specSaving} className="w-full bg-teal-600 text-white hover:bg-teal-500">
                   {specSaving ? 'Guardando...' : 'Guardar especialista'}
                 </Button>
-              </div>
+              </form>
             </DialogContent>
           </Dialog>
         </div>
