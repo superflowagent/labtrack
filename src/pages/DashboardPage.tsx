@@ -575,18 +575,18 @@ function DashboardPage() {
                       value={form.patient_id}
                       onValueChange={(value) => setForm((prev) => ({ ...prev, patient_id: value }))}
                     >
-                      <SelectTrigger>
-                      {form.patient_id ? (
-                        <div className="flex items-center gap-2 w-full justify-start">
-                          <span className="w-10 text-right text-xs text-slate-500">{patients.find((p) => p.id === form.patient_id)?.code || '-'}</span>
-                          <span className="flex-1 truncate text-sm text-slate-700 text-left">
-                            {patients.find((p) => p.id === form.patient_id)?.name}
-                          </span>
-                        </div>
-                      ) : (
-                        <div className="w-full text-left text-sm text-slate-500">Seleccionar paciente</div>
-                      )}
-                    </SelectTrigger>
+                      <SelectTrigger className="pl-2">
+                        {form.patient_id ? (
+                          <div className="flex items-center gap-2 w-full justify-start">
+                            <span className="w-10 text-right text-xs text-slate-500">{patients.find((p) => p.id === form.patient_id)?.code || '-'}</span>
+                            <span className="flex-1 truncate text-sm text-slate-700 text-left">
+                              {patients.find((p) => p.id === form.patient_id)?.name}
+                            </span>
+                          </div>
+                        ) : (
+                          <div className="w-full text-left text-sm text-slate-500">Seleccionar paciente</div>
+                        )}
+                      </SelectTrigger>
                       <SelectContent className="!p-0">
                         <div className="p-2">
                           <Input
@@ -836,13 +836,13 @@ function DashboardPage() {
         <Card className="mt-6 border-slate-200 bg-white">
           <Table>
             <colgroup>
-              <col style={{ width: '22%' }} />
-              <col style={{ width: '24%' }} />
-              <col style={{ width: '12%' }} />
+              <col style={{ width: '20%' }} />
+              <col style={{ width: '20%' }} />
               <col style={{ width: '15%' }} />
               <col style={{ width: '15%' }} />
-              <col style={{ width: '6%' }} />
-              <col style={{ width: '6%' }} />
+              <col style={{ width: '10%' }} />
+              <col style={{ width: '10%' }} />
+              <col style={{ width: '10%' }} />
             </colgroup>
             <TableHeader>
               <TableRow>
