@@ -143,6 +143,7 @@ function DashboardPage() {
     laboratorioId: 'all',
     estado: 'all',
     sortBy: 'paciente',
+    sortDir: 'asc',
     maxDaysElapsed: 0, // 0 = no filter, otherwise show jobs with Transcurrido >= value (days)
   }
 
@@ -228,30 +229,28 @@ function DashboardPage() {
 
     filtered = filtered.slice().sort((a, b) => {
       const getPatientName = (id: string | null) => patients.find((p) => p.id === id)?.name || ''
+      const compare = (x: string, y: string) => x.localeCompare(y)
+      let cmp = 0
       switch (filters.sortBy) {
         case 'paciente':
-          return getPatientName(a.patient_id).localeCompare(getPatientName(b.patient_id))
-        case 'paciente_desc':
-          return getPatientName(b.patient_id).localeCompare(getPatientName(a.patient_id))
+          cmp = compare(getPatientName(a.patient_id), getPatientName(b.patient_id))
+          break
         case 'trabajo':
-          return (a.job_description || '').localeCompare(b.job_description || '')
-        case 'trabajo_desc':
-          return (b.job_description || '').localeCompare(a.job_description || '')
+          cmp = compare(a.job_description || '', b.job_description || '')
+          break
         case 'laboratorio':
-          return getLabName(a.laboratory_id).localeCompare(getLabName(b.laboratory_id))
-        case 'laboratorio_desc':
-          return getLabName(b.laboratory_id).localeCompare(getLabName(a.laboratory_id))
+          cmp = compare(getLabName(a.laboratory_id), getLabName(b.laboratory_id))
+          break
         case 'especialista':
-          return getSpecName(a.specialist_id).localeCompare(getSpecName(b.specialist_id))
-        case 'especialista_desc':
-          return getSpecName(b.specialist_id).localeCompare(getSpecName(a.specialist_id))
+          cmp = compare(getSpecName(a.specialist_id), getSpecName(b.specialist_id))
+          break
         case 'estado':
-          return a.status.localeCompare(b.status)
-        case 'estado_desc':
-          return b.status.localeCompare(a.status)
+          cmp = compare(a.status, b.status)
+          break
         default:
-          return 0
+          cmp = 0
       }
+      return filters.sortDir === 'asc' ? cmp : -cmp
     })
 
     return filtered
@@ -576,8 +575,8 @@ function DashboardPage() {
                       <SelectTrigger>
                         <div className="flex items-center gap-3 w-full">
                           <span className="w-10 text-right text-xs text-slate-500">{patients.find((p) => p.id === form.patient_id)?.code || '-'}</span>
-                          <span className="flex-1 truncate">
-                            <SelectValue placeholder="Selecciona un paciente" />
+                          <span className="flex-1 truncate text-sm text-slate-700">
+                            {form.patient_id ? patients.find((p) => p.id === form.patient_id)?.name : 'Selecciona un paciente'}
                           </span>
                         </div>
                       </SelectTrigger>
@@ -829,50 +828,64 @@ function DashboardPage() {
         </Card>
         <Card className="mt-6 border-slate-200 bg-white">
           <Table>
+            <colgroup>
+              <col style={{ width: '22%' }} />
+              <col style={{ width: '28%' }} />
+              <col style={{ width: '15%' }} />
+              <col style={{ width: '15%' }} />
+              <col style={{ width: '8%' }} />
+              <col style={{ width: '6%' }} />
+              <col style={{ width: '6%' }} />
+            </colgroup>
             <TableHeader>
               <TableRow>
-                <TableHead
-                  className="cursor-pointer pl-6"
-                  onClick={() => {
-                    setFilters((f) => ({ ...f, sortBy: f.sortBy === 'paciente' ? 'paciente_desc' : 'paciente' }))
-                  }}
-                >
-                  Paciente {filters.sortBy.startsWith('paciente') ? (filters.sortBy === 'paciente' ? '▲' : '▼') : ''}
+                <TableHead className="cursor-pointer pl-6" style={{ minWidth: 120 }} onClick={() => {
+                  setFilters((f) => ({
+                    ...f,
+                    sortBy: 'paciente',
+                    sortDir: f.sortBy === 'paciente' ? (f.sortDir === 'asc' ? 'desc' : 'asc') : 'asc',
+                  }))
+                }}>
+                  Paciente {filters.sortBy === 'paciente' ? (filters.sortDir === 'asc' ? '▲' : '▼') : ''}
                 </TableHead>
-                <TableHead
-                  className="cursor-pointer"
-                  onClick={() => {
-                    setFilters((f) => ({ ...f, sortBy: f.sortBy === 'trabajo' ? 'trabajo_desc' : 'trabajo' }))
-                  }}
-                >
-                  Trabajo {filters.sortBy.startsWith('trabajo') ? (filters.sortBy === 'trabajo' ? '▲' : '▼') : ''}
+                <TableHead className="cursor-pointer" style={{ minWidth: 140 }} onClick={() => {
+                  setFilters((f) => ({
+                    ...f,
+                    sortBy: 'trabajo',
+                    sortDir: f.sortBy === 'trabajo' ? (f.sortDir === 'asc' ? 'desc' : 'asc') : 'asc',
+                  }))
+                }}>
+                  Trabajo {filters.sortBy === 'trabajo' ? (filters.sortDir === 'asc' ? '▲' : '▼') : ''}
                 </TableHead>
-                <TableHead
-                  className="cursor-pointer"
-                  onClick={() => {
-                    setFilters((f) => ({ ...f, sortBy: f.sortBy === 'laboratorio' ? 'laboratorio_desc' : 'laboratorio' }))
-                  }}
-                >
-                  Laboratorio {filters.sortBy.startsWith('laboratorio') ? (filters.sortBy === 'laboratorio' ? '▲' : '▼') : ''}
+                <TableHead className="cursor-pointer" style={{ minWidth: 140 }} onClick={() => {
+                  setFilters((f) => ({
+                    ...f,
+                    sortBy: 'laboratorio',
+                    sortDir: f.sortBy === 'laboratorio' ? (f.sortDir === 'asc' ? 'desc' : 'asc') : 'asc',
+                  }))
+                }}>
+                  Laboratorio {filters.sortBy === 'laboratorio' ? (filters.sortDir === 'asc' ? '▲' : '▼') : ''}
                 </TableHead>
-                <TableHead
-                  className="cursor-pointer"
-                  onClick={() => {
-                    setFilters((f) => ({ ...f, sortBy: f.sortBy === 'especialista' ? 'especialista_desc' : 'especialista' }))
-                  }}
-                >
-                  Especialista {filters.sortBy.startsWith('especialista') ? (filters.sortBy === 'especialista' ? '▲' : '▼') : ''}
+                <TableHead className="cursor-pointer" style={{ minWidth: 140 }} onClick={() => {
+                  setFilters((f) => ({
+                    ...f,
+                    sortBy: 'especialista',
+                    sortDir: f.sortBy === 'especialista' ? (f.sortDir === 'asc' ? 'desc' : 'asc') : 'asc',
+                  }))
+                }}>
+                  Especialista {filters.sortBy === 'especialista' ? (filters.sortDir === 'asc' ? '▲' : '▼') : ''}
                 </TableHead>
-                <TableHead
-                  className="cursor-pointer"
-                  onClick={() => {
-                    setFilters((f) => ({ ...f, sortBy: f.sortBy === 'estado' ? 'estado_desc' : 'estado' }))
-                  }}
-                >
-                  Estado {filters.sortBy.startsWith('estado') ? (filters.sortBy === 'estado' ? '▲' : '▼') : ''}
+                <TableHead className="cursor-pointer" style={{ minWidth: 100 }} onClick={() => {
+                  setFilters((f) => ({
+                    ...f,
+                    sortBy: 'estado',
+                    sortDir: f.sortBy === 'estado' ? (f.sortDir === 'asc' ? 'desc' : 'asc') : 'asc',
+                  }))
+                }}>
+                  Estado {filters.sortBy === 'estado' ? (filters.sortDir === 'asc' ? '▲' : '▼') : ''}
                 </TableHead>
-                <TableHead>Salida trabajo</TableHead>
-                <TableHead>Transcurrido</TableHead>
+                <TableHead style={{ minWidth: 120 }}>Salida trabajo</TableHead>
+                <TableHead style={{ minWidth: 120 }}>Transcurrido</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
