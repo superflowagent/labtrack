@@ -146,12 +146,16 @@ export default function LaboratoriesPage() {
             </div>
             <Filtros
                 filters={{ paciente: filters.nombre }}
-                setFilters={(fn) =>
-                    setFilters((f) => {
-                        const updated = fn({ paciente: f.nombre, laboratorioId: undefined, estado: undefined })
-                        return { ...f, nombre: updated.paciente ?? '' }
-                    })
-                }
+                setFilters={(updated) => {
+                    if (typeof updated === 'function') {
+                        setFilters((f) => {
+                            const result = updated({ paciente: f.nombre, laboratorioId: undefined, estado: undefined });
+                            return { ...f, nombre: result.paciente ?? '' };
+                        });
+                    } else {
+                        setFilters((f) => ({ ...f, nombre: updated.paciente ?? '' }));
+                    }
+                }}
                 showPaciente={true}
                 showLaboratorio={false}
                 showEstado={false}
@@ -307,12 +311,16 @@ export function SpecialistsPage() {
             </div>
             <Filtros
                 filters={{ paciente: filters.nombre }}
-                setFilters={(fn) =>
-                    setFilters((f) => {
-                        const updated = fn({ paciente: f.nombre, laboratorioId: undefined, estado: undefined })
-                        return { ...f, nombre: updated.paciente ?? '' }
-                    })
-                }
+                setFilters={(updated) => {
+                    if (typeof updated === 'function') {
+                        setFilters((f) => {
+                            const result = updated({ paciente: f.nombre, laboratorioId: undefined, estado: undefined });
+                            return { ...f, nombre: result.paciente ?? '' };
+                        });
+                    } else {
+                        setFilters((f) => ({ ...f, nombre: updated.paciente ?? '' }));
+                    }
+                }}
                 showPaciente={true}
                 showLaboratorio={false}
                 showEstado={false}

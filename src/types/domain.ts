@@ -37,8 +37,6 @@ export type Patient = {
 
 export type Job = {
   id: string
-  patient_name: string
-  patient_phone: string | null
   patient_id: string | null
   job_description: string | null
   laboratory_id: string | null
