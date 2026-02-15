@@ -158,6 +158,7 @@ function DashboardPage() {
   const [form, setForm] = useState(getEmptyJobForm)
   // track whether the datepicker was manually interacted with
   const [orderDateInteracted, setOrderDateInteracted] = useState(false)
+  const [orderDatePopoverOpen, setOrderDatePopoverOpen] = useState(false)
   const [saving, setSaving] = useState(false)
   const [deletingJob, setDeletingJob] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
@@ -693,7 +694,7 @@ function DashboardPage() {
                 </div>
                 <div className="space-y-2">
                   <div className="text-sm font-semibold text-slate-700">Salida trabajo</div>
-                  <Popover>
+                  <Popover open={orderDatePopoverOpen} onOpenChange={setOrderDatePopoverOpen}>
                     <PopoverTrigger asChild>
                       <Button
                         variant="outline"
@@ -713,6 +714,7 @@ function DashboardPage() {
                             order_date: value ?? prev.order_date ?? new Date(),
                           }))
                           setOrderDateInteracted(true)
+                          setOrderDatePopoverOpen(false)
                         }}
                         initialFocus
                       />
