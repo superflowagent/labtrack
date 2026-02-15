@@ -159,6 +159,13 @@ function DashboardPage() {
   const [saving, setSaving] = useState(false)
   const [deletingJob, setDeletingJob] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
+  // patient select local state
+  const [patientQuery, setPatientQuery] = useState('')
+  const [pendingPatientSelection, setPendingPatientSelection] = useState(false)
+
+  useEffect(() => {
+    if (open) setPatientQuery('')
+  }, [open])
 
   const [labOpen, setLabOpen] = useState(false)
   const [editingLabId, setEditingLabId] = useState<string | null>(null)
@@ -205,7 +212,7 @@ function DashboardPage() {
 
       return matchPaciente && matchLab && matchEstado
     })
-  }, [jobs, filters])
+  }, [jobs, filters, patients])
 
   const filteredJobs = useMemo(() => {
     let filtered = jobsForElapsed.filter((job) => {
@@ -248,7 +255,7 @@ function DashboardPage() {
     })
 
     return filtered
-  }, [filters, jobsForElapsed, labs, specialists])
+  }, [filters, jobsForElapsed, labs, specialists, patients])
 
   const capitalizeFirst = (s?: string) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s)
 
@@ -477,21 +484,26 @@ function DashboardPage() {
     setPatientFormError(null)
     try {
       if (!patientForm.name.trim()) throw new Error('El nombre del paciente es obligatorio')
-      if (editingPatientId) {
-        await updatePatient(editingPatientId, {
-          name: patientForm.name.trim(),
-          phone: patientForm.phone || null,
-          email: patientForm.email || null,
-          code: patientForm.code || null,
-        })
-      } else {
-        await createPatient({
-          name: patientForm.name.trim(),
-          phone: patientForm.phone || null,
-          email: patientForm.email || null,
-          code: patientForm.code || null,
-        })
+      const saved = editingPatientId
+        ? await updatePatient(editingPatientId, {
+            name: patientForm.name.trim(),
+            phone: patientForm.phone || null,
+            email: patientForm.email || null,
+            code: patientForm.code || null,
+          })
+        : await createPatient({
+            name: patientForm.name.trim(),
+            phone: patientForm.phone || null,
+            email: patientForm.email || null,
+            code: patientForm.code || null,
+          })
+
+      // Si abrimos el modal de paciente desde el modal de trabajo, seleccionar el paciente creado
+      if (pendingPatientSelection && saved?.id) {
+        setForm((prev) => ({ ...prev, patient_id: saved.id }))
+        setPendingPatientSelection(false)
       }
+
       setPatientOpen(false)
       setEditingPatientId(null)
       setPatientForm({ name: '', phone: '', email: '', code: '' })
@@ -556,21 +568,49 @@ function DashboardPage() {
               >
                 <div className="space-y-2">
                   <Label>Paciente</Label>
-                  <Select
-                    value={form.patient_id}
-                    onValueChange={(value) => setForm((prev) => ({ ...prev, patient_id: value }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecciona un paciente" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {patients.map((p) => (
-                        <SelectItem key={p.id} value={p.id}>
-                          {p.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div className="flex items-center gap-2">
+                    <Select
+                      value={form.patient_id}
+                      onValueChange={(value) => setForm((prev) => ({ ...prev, patient_id: value }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecciona un paciente" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <div className="p-2">
+                          <Input
+                            value={patientQuery}
+                            onChange={(e) => setPatientQuery(e.target.value)}
+                            placeholder="Buscar paciente"
+                            className="mb-2"
+                          />
+                        </div>
+                        {patients
+                          .filter((p) => p.name.toLowerCase().includes(patientQuery.toLowerCase()))
+                          .map((p) => (
+                            <SelectItem key={p.id} value={p.id}>
+                              <div className="flex items-center justify-between w-full">
+                                <span>{p.name}</span>
+                                <small className="text-xs text-slate-400">{p.phone || ''}</small>
+                              </div>
+                            </SelectItem>
+                          ))}
+                        {patients.filter((p) => p.name.toLowerCase().includes(patientQuery.toLowerCase())).length === 0 && (
+                          <div className="p-3 text-sm text-slate-500">No hay resultados</div>
+                        )}
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        setPatientOpen(true)
+                        setPendingPatientSelection(true)
+                      }}
+                    >
+                      Nuevo
+                    </Button>
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <Label>Trabajo</Label>
@@ -1134,6 +1174,7 @@ function DashboardPage() {
               if (!value) {
                 setEditingPatientId(null)
                 setPatientForm({ name: '', phone: '', email: '', code: '' })
+                setPendingPatientSelection(false)
               }
             }}
           >
