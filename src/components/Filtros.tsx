@@ -2,15 +2,18 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { Card } from '@/components/ui/card';
+import { FlaskConical, Clock, CalendarCheck, Archive } from 'lucide-react';
 import React from 'react';
 
+type Filters = {
+    paciente?: string;
+    laboratorioId?: string;
+    estado?: string;
+};
+
 interface FiltrosProps {
-    filters: {
-        paciente?: string;
-        laboratorioId?: string;
-        estado?: string;
-    };
-    setFilters: (fn: (prev: any) => any) => void;
+    filters: Filters;
+    setFilters: React.Dispatch<React.SetStateAction<Filters>>;
     labs?: Array<{ id: string; name: string }>;
     showPaciente?: boolean;
     showLaboratorio?: boolean;
@@ -34,7 +37,7 @@ export const Filtros: React.FC<FiltrosProps> = ({
                     <Label>Buscar</Label>
                     <Input
                         value={filters.paciente || ''}
-                        onChange={(event) => setFilters((prev: any) => ({ ...prev, paciente: event.target.value }))}
+                        onChange={(event) => setFilters((prev) => ({ ...prev, paciente: event.target.value }))}
                         placeholder="Buscar por nombre"
                     />
                 </div>
@@ -44,7 +47,7 @@ export const Filtros: React.FC<FiltrosProps> = ({
                     <Label>Estado</Label>
                     <Select
                         value={filters.estado}
-                        onValueChange={(value) => setFilters((prev: any) => ({ ...prev, estado: value }))}
+                        onValueChange={(value) => setFilters((prev) => ({ ...prev, estado: value }))}
                     >
                         <SelectTrigger>
                             <SelectValue placeholder="Todos" />
@@ -53,25 +56,33 @@ export const Filtros: React.FC<FiltrosProps> = ({
                             <SelectItem value="all">Todos</SelectItem>
                             {statuses.map((status) => {
                                 let color = '';
+                                let icon = null;
                                 switch (status) {
                                     case 'En laboratorio':
-                                        color = 'text-blue-600';
+                                        color = 'text-yellow-600';
+                                        icon = <FlaskConical className="h-3.5 w-3.5" />;
                                         break;
                                     case 'En clinica (sin citar)':
-                                        color = 'text-yellow-600';
+                                        color = 'text-orange-700';
+                                        icon = <Clock className="h-3.5 w-3.5" />;
                                         break;
                                     case 'En clinica (citado)':
-                                        color = 'text-green-600';
+                                        color = 'text-purple-600';
+                                        icon = <CalendarCheck className="h-3.5 w-3.5" />;
                                         break;
                                     case 'Cerrado':
-                                        color = 'text-gray-500';
+                                        color = 'text-blue-600';
+                                        icon = <Archive className="h-3.5 w-3.5" />;
                                         break;
                                     default:
                                         color = '';
                                 }
                                 return (
                                     <SelectItem key={status} value={status} className={color}>
-                                        {status}
+                                        <span className="flex items-center gap-2">
+                                            {icon}
+                                            {status}
+                                        </span>
                                     </SelectItem>
                                 );
                             })}
@@ -84,7 +95,7 @@ export const Filtros: React.FC<FiltrosProps> = ({
                     <Label>Laboratorio</Label>
                     <Select
                         value={filters.laboratorioId}
-                        onValueChange={(value) => setFilters((prev: any) => ({ ...prev, laboratorioId: value }))}
+                        onValueChange={(value) => setFilters((prev) => ({ ...prev, laboratorioId: value }))}
                     >
                         <SelectTrigger>
                             <SelectValue placeholder="Todos" />

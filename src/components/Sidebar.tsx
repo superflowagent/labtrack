@@ -1,15 +1,26 @@
-import { LayoutList, FlaskConical, Stethoscope, LogOut } from 'lucide-react'
-import { Logo } from './Logo'
+import {
+    FlaskConical,
+    LayoutList,
+    LogOut,
+    Stethoscope,
+    UserRound,
+} from "lucide-react"
+import { useEffect, useState } from "react"
 
-const navItems: { label: string; tab: 'trabajos' | 'laboratorios' | 'especialistas'; icon: any }[] = [
-    { label: 'Trabajos', tab: 'trabajos', icon: LayoutList },
-    { label: 'Laboratorios', tab: 'laboratorios', icon: FlaskConical },
-    { label: 'Especialistas', tab: 'especialistas', icon: Stethoscope },
-]
+import { signOut } from "@/services/supabase/auth"
 
+import { Logo } from "./Logo"
 
-import { signOut } from '@/services/supabase/auth'
-import { useEffect, useState } from 'react';
+const navItems: {
+    label: string
+    tab: "trabajos" | "laboratorios" | "especialistas" | "pacientes"
+    icon: React.ComponentType<{ className?: string }>
+}[] = [
+        { label: "Trabajos", tab: "trabajos", icon: LayoutList },
+        { label: "Laboratorios", tab: "laboratorios", icon: FlaskConical },
+        { label: "Especialistas", tab: "especialistas", icon: Stethoscope },
+        { label: "Pacientes", tab: "pacientes", icon: UserRound },
+    ]
 
 export function Sidebar() {
     const [clinicName, setClinicName] = useState<string | null>(null);
@@ -23,8 +34,8 @@ export function Sidebar() {
         };
     }, []);
     return (
-        <aside className="flex h-screen flex-col border-r border-slate-200 bg-white px-4 py-6 shadow-sm">
-            <div className="mb-8 flex items-center justify-center">
+        <aside className="flex h-screen flex-col border-r border-slate-200 bg-white px-3 py-6 shadow-sm min-w-[230px]">
+            <div className="mb-8 flex items-center" style={{ marginLeft: 4 }}>
                 <Logo />
             </div>
             <nav className="flex flex-1 flex-col gap-2">

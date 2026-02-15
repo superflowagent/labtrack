@@ -1,14 +1,10 @@
-import { useMemo, useState, useEffect } from 'react'
-import { format } from 'date-fns'
-import { LaboratoriesTable, SpecialistsTable } from './LaboratoriesSpecialistsTables';
-// import { useLocation, useNavigate } from 'react-router-dom';
-import { getClinicForUser } from '@/services/supabase/clinic'
-import { createLaboratory, createSpecialist } from '@/services/supabase/queries'
-import { ClipboardPlus, FlaskConical, Stethoscope } from 'lucide-react'
-import { useJobs } from '@/hooks/useJobs'
-// import { LaboratoriesTable, SpecialistsTable } from './LaboratoriesSpecialistsTables';
-import type { JobStatus } from '@/types/domain'
+import { format, formatDistanceToNow, parseISO, differenceInCalendarDays } from 'date-fns'
+import { es } from 'date-fns/locale'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { Calendar as CalendarIcon, ClipboardPlus, FlaskConical, Stethoscope, UserRound, Clock, CalendarCheck, Archive } from 'lucide-react'
+import { Filtros } from '@/components/Filtros'
 import { Button } from '@/components/ui/button'
+import { Calendar } from '@/components/ui/calendar'
 import { Card } from '@/components/ui/card'
 import {
   Dialog,
@@ -19,9 +15,8 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
-import { DatePicker } from '@/components/ui/date-picker'
 import { Label } from '@/components/ui/label'
-import { Filtros } from '@/components/Filtros'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import {
   Select,
   SelectContent,
@@ -29,6 +24,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { Snackbar } from '@/components/ui/snackbar'
 import {
   Table,
   TableBody,
@@ -37,6 +33,23 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { useJobs } from '@/hooks/useJobs'
+import { getClinicForUser } from '@/services/supabase/clinic'
+import {
+  createLaboratory,
+  createPatient,
+  createSpecialist,
+  deleteJob,
+  deleteLaboratory,
+  deletePatient,
+  deleteSpecialist,
+  updateJob,
+  updateLaboratory,
+  updatePatient,
+  updateSpecialist,
+} from '@/services/supabase/queries'
+import type { Job, JobStatus, Laboratory, Specialist, Patient } from '@/types/domain'
+import { LaboratoriesTable, PatientsTable, SpecialistsTable } from './LaboratoriesSpecialistsTables'
 
 const STATUSES: JobStatus[] = [
   'En laboratorio',
@@ -45,54 +58,346 @@ const STATUSES: JobStatus[] = [
   'Cerrado',
 ]
 
-export const DashboardPage = () => {
-  const [section, setSection] = useState<'trabajos' | 'laboratorios' | 'especialistas'>('trabajos');
-  // Exponer setSection globalmente para Sidebar
-  window.setDashboardSection = setSection;
+const getStatusTextClass = (status?: string) => {
+  switch (status) {
+    case 'En laboratorio':
+      return 'text-yellow-600'
+    case 'En clinica (sin citar)':
+      return 'text-orange-700'
+    case 'En clinica (citado)':
+      return 'text-purple-600'
+    case 'Cerrado':
+      return 'text-blue-600'
+    default:
+      return ''
+  }
+}
+
+const getStatusIcon = (status: string) => {
+  switch (status) {
+    case 'En laboratorio':
+      return <FlaskConical className="h-3.5 w-3.5" />
+    case 'En clinica (sin citar)':
+      return <Clock className="h-3.5 w-3.5" />
+    case 'En clinica (citado)':
+      return <CalendarCheck className="h-3.5 w-3.5" />
+    case 'Cerrado':
+      return <Archive className="h-3.5 w-3.5" />
+    default:
+      return null
+  }
+}
+
+type JobForm = {
+  patient_name: string
+  patient_phone: string
+  job_description: string
+  laboratory_id: string
+  specialist_id: string
+  order_date: Date
+  status: JobStatus
+}
+
+type BasicFilters = {
+  paciente?: string
+  laboratorioId?: string
+  estado?: string
+}
+
+const getEmptyJobForm = (): JobForm => ({
+  patient_name: '',
+  patient_phone: '',
+  job_description: '',
+  laboratory_id: '',
+  specialist_id: '',
+  order_date: new Date(),
+  status: STATUSES[0],
+})
+
+function DashboardPage() {
+  const [section, setSection] = useState<'trabajos' | 'laboratorios' | 'especialistas' | 'pacientes'>('trabajos')
+  const { jobs, labs, specialists, patients, loading, error, addJob, reload } = useJobs()
 
   useEffect(() => {
-    getClinicForUser().then((c) => {
-      if (c?.name) {
-        window.clinicName = c.name;
-        window.dispatchEvent(new Event('clinicNameChanged'));
+    window.setDashboardSection = setSection
+    return () => {
+      if (window.setDashboardSection === setSection) {
+        window.setDashboardSection = undefined
       }
-    }).catch(() => {/* ignore */ })
-  }, [])
-  const { jobs, labs, specialists, loading, error, addJob, reload } = useJobs()
-  const [filters, setFilters] = useState({ paciente: '', laboratorioId: 'all', estado: 'all', sortBy: 'fecha' })
-  const [labsFilters, setLabsFilters] = useState({ nombre: '' })
-  const [specialistsFilters, setSpecialistsFilters] = useState({ nombre: '' })
-  const [open, setOpen] = useState(false)
-  const [form, setForm] = useState({
-    patient_name: '',
-    patient_phone: '',
-    job_description: '',
-    laboratory_id: '',
-    specialist_id: '',
-    order_date: '',
-    status: STATUSES[0],
-  })
-  // Al abrir el modal de 'Nuevo trabajo' selecciona por defecto la fecha actual
+    }
+  }, [setSection])
+
   useEffect(() => {
-    if (!open) return;
-    setForm(prev => prev.order_date ? prev : ({ ...prev, order_date: new Date().toISOString().slice(0, 10) }));
-  }, [open]);
+    getClinicForUser()
+      .then((clinic) => {
+        if (clinic?.name) {
+          window.clinicName = clinic.name
+          window.dispatchEvent(new Event('clinicNameChanged'))
+        }
+      })
+      .catch(() => {
+        // ignore
+      })
+  }, [])
+
+  const defaultFilters = {
+    paciente: '',
+    laboratorioId: 'all',
+    estado: 'all',
+    sortBy: 'paciente',
+    maxDaysElapsed: 0, // 0 = no filter, otherwise show jobs with Transcurrido >= value (days)
+  }
+
+  const [filters, setFilters] = useState(defaultFilters)
+  const [labsFilters, setLabsFilters] = useState<BasicFilters>({ paciente: '' })
+  const [specialistsFilters, setSpecialistsFilters] = useState<BasicFilters>({ paciente: '' })
+  const [patientsFilters, setPatientsFilters] = useState<BasicFilters>({ paciente: '' })
+
+  const [open, setOpen] = useState(false)
+  const [editingJobId, setEditingJobId] = useState<string | null>(null)
+  const [form, setForm] = useState(getEmptyJobForm)
+  // track whether the datepicker was manually interacted with
+  const [orderDateInteracted, setOrderDateInteracted] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [deletingJob, setDeletingJob] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
 
-  // Lab modal (moved here so the top-right button controls the dialog)
   const [labOpen, setLabOpen] = useState(false)
+  const [editingLabId, setEditingLabId] = useState<string | null>(null)
   const [labForm, setLabForm] = useState({ name: '', phone: '', email: '' })
   const [labSaving, setLabSaving] = useState(false)
+  const [deletingLab, setDeletingLab] = useState(false)
   const [labFormError, setLabFormError] = useState<string | null>(null)
+
+  const [specOpen, setSpecOpen] = useState(false)
+  const [editingSpecId, setEditingSpecId] = useState<string | null>(null)
+  const [specForm, setSpecForm] = useState({ name: '', specialty: '', phone: '', email: '' })
+  const [specSaving, setSpecSaving] = useState(false)
+  const [deletingSpec, setDeletingSpec] = useState(false)
+  const [specFormError, setSpecFormError] = useState<string | null>(null)
+
+  const [patientOpen, setPatientOpen] = useState(false)
+  const [editingPatientId, setEditingPatientId] = useState<string | null>(null)
+  const [patientForm, setPatientForm] = useState({ name: '', phone: '', email: '', code: '' })
+  const [patientSaving, setPatientSaving] = useState(false)
+  const [deletingPatient, setDeletingPatient] = useState(false)
+  const [patientFormError, setPatientFormError] = useState<string | null>(null)
+
+  const [snackbar, setSnackbar] = useState<{ open: boolean; kind?: 'job' | 'lab' | 'spec' | 'patient'; item?: Job | Laboratory | Specialist | Patient | null; message?: string }>({ open: false })
+
+  const activeFiltersCount = useMemo(() => {
+    let count = 0
+    if (filters.paciente.trim()) count += 1
+    if (filters.laboratorioId !== 'all') count += 1
+    if (filters.estado !== 'all') count += 1
+    if (filters.maxDaysElapsed && filters.maxDaysElapsed > 0) count += 1
+    return count
+  }, [filters])
+
+  const jobsForElapsed = useMemo(() => {
+    return jobs.filter((job) => {
+      const matchPaciente = filters.paciente
+        ? job.patient_name.toLowerCase().includes(filters.paciente.toLowerCase())
+        : true
+      const matchLab = filters.laboratorioId !== 'all' ? job.laboratory_id === filters.laboratorioId : true
+      // Mostrar por defecto TODOS los estados excepto 'Cerrado'.
+      // Si el usuario selecciona explícitamente un estado (p. ej. 'Cerrado'), mostrar solo ese estado.
+      const matchEstado = filters.estado !== 'all' ? job.status === filters.estado : job.status !== 'Cerrado'
+
+      return matchPaciente && matchLab && matchEstado
+    })
+  }, [jobs, filters])
+
+  const filteredJobs = useMemo(() => {
+    let filtered = jobsForElapsed.filter((job) => {
+      const matchDays = typeof filters.maxDaysElapsed === 'number' && filters.maxDaysElapsed > 0
+        ? (job.order_date ? differenceInCalendarDays(new Date(), parseISO(job.order_date)) >= filters.maxDaysElapsed : false)
+        : true
+
+      return matchDays
+    })
+
+    const getLabName = (id: string | null) => labs.find((lab) => lab.id === id)?.name || ''
+    const getSpecName = (id: string | null) => specialists.find((spec) => spec.id === id)?.name || ''
+
+    filtered = filtered.slice().sort((a, b) => {
+      switch (filters.sortBy) {
+        case 'paciente':
+          return a.patient_name.localeCompare(b.patient_name)
+        case 'paciente_desc':
+          return b.patient_name.localeCompare(a.patient_name)
+        case 'trabajo':
+          return (a.job_description || '').localeCompare(b.job_description || '')
+        case 'trabajo_desc':
+          return (b.job_description || '').localeCompare(a.job_description || '')
+        case 'laboratorio':
+          return getLabName(a.laboratory_id).localeCompare(getLabName(b.laboratory_id))
+        case 'laboratorio_desc':
+          return getLabName(b.laboratory_id).localeCompare(getLabName(a.laboratory_id))
+        case 'especialista':
+          return getSpecName(a.specialist_id).localeCompare(getSpecName(b.specialist_id))
+        case 'especialista_desc':
+          return getSpecName(b.specialist_id).localeCompare(getSpecName(a.specialist_id))
+        case 'estado':
+          return a.status.localeCompare(b.status)
+        case 'estado_desc':
+          return b.status.localeCompare(a.status)
+        default:
+          return 0
+      }
+    })
+
+    return filtered
+  }, [filters, jobsForElapsed, labs, specialists])
+
+  const capitalizeFirst = (s?: string) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s)
+
+  const maxElapsedDays = useMemo(() => {
+    const values = jobsForElapsed
+      .map((j) => (j.order_date ? differenceInCalendarDays(new Date(), parseISO(j.order_date)) : -1))
+      .filter((d) => d >= 0)
+    return values.length ? Math.max(...values) : 0
+  }, [jobsForElapsed])
+
+  const sliderMax = maxElapsedDays > 0 ? maxElapsedDays : 365
+  const isElapsedDisabled = jobsForElapsed.length === 0
+
+  // if available max shrinks, clamp the current filter value so the slider/value stay consistent
+  useEffect(() => {
+    if (filters.maxDaysElapsed > 0 && maxElapsedDays > 0 && filters.maxDaysElapsed > maxElapsedDays) {
+      setFilters((prev) => ({ ...prev, maxDaysElapsed: maxElapsedDays }))
+    }
+  }, [filters.maxDaysElapsed, maxElapsedDays])
+
+  const handleSaveJob = async () => {
+    setSaving(true)
+    setFormError(null)
+
+    try {
+      if (!form.patient_name.trim()) {
+        throw new Error('El nombre del paciente es obligatorio')
+      }
+
+      const orderDateValue: string | null = !editingJobId && !orderDateInteracted
+        ? new Date().toISOString()
+        : form.order_date
+          ? format(form.order_date, 'yyyy-MM-dd')
+          : null
+
+      const payload = {
+        patient_name: form.patient_name.trim(),
+        patient_phone: form.patient_phone || null,
+        patient_id: null,
+        job_description: form.job_description || null,
+        laboratory_id: form.laboratory_id || null,
+        specialist_id: form.specialist_id || null,
+        order_date: orderDateValue,
+        status: form.status,
+      }
+
+      if (editingJobId) {
+        await updateJob(editingJobId, payload)
+      } else {
+        await addJob(payload)
+      }
+
+      setOpen(false)
+      setEditingJobId(null)
+      setForm(getEmptyJobForm())
+      setOrderDateInteracted(false)
+      await reload()
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : 'No se pudo guardar')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleDeleteJob = async () => {
+    if (!editingJobId) return
+    setDeletingJob(true)
+    setFormError(null)
+    try {
+      const deleted = await deleteJob(editingJobId)
+      setSnackbar({ open: true, kind: 'job', item: deleted, message: 'Trabajo eliminado' })
+      setOpen(false)
+      setEditingJobId(null)
+      setForm(getEmptyJobForm())
+      setOrderDateInteracted(false)
+      await reload()
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : 'No se pudo eliminar')
+    } finally {
+      setDeletingJob(false)
+    }
+  }
+
+  const handleUndo = async () => {
+    if (!snackbar.open || !snackbar.item) return
+    const { kind, item } = snackbar
+    setSnackbar({ open: false })
+    try {
+      if (kind === 'job') {
+        const job = item as Job
+        await addJob({
+          patient_name: job.patient_name,
+          patient_phone: job.patient_phone || null,
+          patient_id: job.patient_id ?? null,
+          job_description: job.job_description || null,
+          laboratory_id: job.laboratory_id || null,
+          specialist_id: job.specialist_id || null,
+          order_date: job.order_date || null,
+          status: job.status,
+        })
+        await reload()
+        return
+      }
+
+      if (kind === 'lab') {
+        const lab = item as Laboratory
+        await createLaboratory({ name: lab.name, phone: lab.phone || null, email: lab.email || null })
+        await reload()
+        return
+      }
+
+      if (kind === 'spec') {
+        const spec = item as Specialist
+        await createSpecialist({ name: spec.name, specialty: spec.specialty || null, phone: spec.phone || null, email: spec.email || null })
+        await reload()
+        return
+      }
+
+      if (kind === 'patient') {
+        const p = item as Patient
+        await createPatient({ name: p.name, phone: p.phone || null, email: p.email || null, code: p.code || null })
+        await reload()
+        return
+      }
+    } catch {
+      // ignore undo errors
+    }
+  }
 
   const handleCreateLab = async () => {
     setLabSaving(true)
     setLabFormError(null)
     try {
       if (!labForm.name.trim()) throw new Error('El nombre del laboratorio es obligatorio')
-      await createLaboratory({ name: labForm.name.trim(), phone: labForm.phone || null, email: labForm.email || null })
+      if (editingLabId) {
+        await updateLaboratory(editingLabId, {
+          name: labForm.name.trim(),
+          phone: labForm.phone || null,
+          email: labForm.email || null,
+        })
+      } else {
+        await createLaboratory({
+          name: labForm.name.trim(),
+          phone: labForm.phone || null,
+          email: labForm.email || null,
+        })
+      }
       setLabOpen(false)
+      setEditingLabId(null)
       setLabForm({ name: '', phone: '', email: '' })
       await reload()
     } catch (err) {
@@ -102,19 +407,46 @@ export const DashboardPage = () => {
     }
   }
 
-  // Specialist modal (moved here as well)
-  const [specOpen, setSpecOpen] = useState(false)
-  const [specForm, setSpecForm] = useState({ name: '', specialty: '', phone: '', email: '' })
-  const [specSaving, setSpecSaving] = useState(false)
-  const [specFormError, setSpecFormError] = useState<string | null>(null)
+  const handleDeleteLab = async () => {
+    if (!editingLabId) return
+    setDeletingLab(true)
+    setLabFormError(null)
+    try {
+      const deleted = await deleteLaboratory(editingLabId)
+      setSnackbar({ open: true, kind: 'lab', item: deleted, message: 'Laboratorio eliminado' })
+      setLabOpen(false)
+      setEditingLabId(null)
+      setLabForm({ name: '', phone: '', email: '' })
+      await reload()
+    } catch (err) {
+      setLabFormError(err instanceof Error ? err.message : 'No se pudo eliminar')
+    } finally {
+      setDeletingLab(false)
+    }
+  }
 
   const handleCreateSpec = async () => {
     setSpecSaving(true)
     setSpecFormError(null)
     try {
       if (!specForm.name.trim()) throw new Error('El nombre del especialista es obligatorio')
-      await createSpecialist({ name: specForm.name.trim(), specialty: specForm.specialty || null, phone: specForm.phone || null, email: specForm.email || null })
+      if (editingSpecId) {
+        await updateSpecialist(editingSpecId, {
+          name: specForm.name.trim(),
+          specialty: specForm.specialty || null,
+          phone: specForm.phone || null,
+          email: specForm.email || null,
+        })
+      } else {
+        await createSpecialist({
+          name: specForm.name.trim(),
+          specialty: specForm.specialty || null,
+          phone: specForm.phone || null,
+          email: specForm.email || null,
+        })
+      }
       setSpecOpen(false)
+      setEditingSpecId(null)
       setSpecForm({ name: '', specialty: '', phone: '', email: '' })
       await reload()
     } catch (err) {
@@ -124,100 +456,106 @@ export const DashboardPage = () => {
     }
   }
 
-  const filteredJobs = useMemo(() => {
-    let filtered = jobs.filter((job) => {
-      const matchPaciente = filters.paciente
-        ? job.patient_name.toLowerCase().includes(filters.paciente.toLowerCase())
-        : true
-      const matchLab = filters.laboratorioId !== 'all' ? job.laboratory_id === filters.laboratorioId : true
-      const matchEstado = filters.estado !== 'all' ? job.status === filters.estado : true
-      return matchPaciente && matchLab && matchEstado
-    });
-    // Ordenamiento
-    const { sortBy } = filters;
-    filtered = filtered.slice();
-    filtered.sort((a, b) => {
-      switch (sortBy) {
-        case 'paciente':
-          return a.patient_name.localeCompare(b.patient_name);
-        case 'paciente_desc':
-          return b.patient_name.localeCompare(a.patient_name);
-        case 'trabajo':
-          return (a.job_description || '').localeCompare(b.job_description || '');
-        case 'trabajo_desc':
-          return (b.job_description || '').localeCompare(a.job_description || '');
-        case 'laboratorio':
-          return (labs.find(l => l.id === a.laboratory_id)?.name || '').localeCompare(labs.find(l => l.id === b.laboratory_id)?.name || '');
-        case 'laboratorio_desc':
-          return (labs.find(l => l.id === b.laboratory_id)?.name || '').localeCompare(labs.find(l => l.id === a.laboratory_id)?.name || '');
-        case 'fecha':
-          return (a.order_date || '').localeCompare(b.order_date || '');
-        case 'fecha_desc':
-          return (b.order_date || '').localeCompare(a.order_date || '');
-        case 'estado':
-          return a.status.localeCompare(b.status);
-        case 'estado_desc':
-          return b.status.localeCompare(a.status);
-        default:
-          return 0;
-      }
-    });
-    return filtered;
-  }, [jobs, filters, labs]);
-
-  const handleCreate = async () => {
-    setSaving(true)
-    setFormError(null)
-
+  const handleDeleteSpec = async () => {
+    if (!editingSpecId) return
+    setDeletingSpec(true)
+    setSpecFormError(null)
     try {
-      if (!form.patient_name.trim()) {
-        throw new Error('El nombre del paciente es obligatorio')
-      }
-
-      await addJob({
-        patient_name: form.patient_name.trim(),
-        patient_phone: form.patient_phone || null,
-        job_description: form.job_description || null,
-        laboratory_id: form.laboratory_id || null,
-        specialist_id: form.specialist_id || null,
-        order_date: form.order_date || null,
-        status: form.status,
-      })
-
-      setOpen(false)
-      setForm({
-        patient_name: '',
-        patient_phone: '',
-        job_description: '',
-        laboratory_id: '',
-        specialist_id: '',
-        order_date: '',
-        status: STATUSES[0],
-      })
+      const deleted = await deleteSpecialist(editingSpecId)
+      setSnackbar({ open: true, kind: 'spec', item: deleted, message: 'Especialista eliminado' })
+      setSpecOpen(false)
+      setEditingSpecId(null)
+      setSpecForm({ name: '', specialty: '', phone: '', email: '' })
+      await reload()
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : 'No se pudo guardar')
+      setSpecFormError(err instanceof Error ? err.message : 'No se pudo eliminar')
     } finally {
-      setSaving(false)
+      setDeletingSpec(false)
     }
   }
 
-  let sectionContent = null;
+  const handleSavePatient = async () => {
+    setPatientSaving(true)
+    setPatientFormError(null)
+    try {
+      if (!patientForm.name.trim()) throw new Error('El nombre del paciente es obligatorio')
+      if (editingPatientId) {
+        await updatePatient(editingPatientId, {
+          name: patientForm.name.trim(),
+          phone: patientForm.phone || null,
+          email: patientForm.email || null,
+          code: patientForm.code || null,
+        })
+      } else {
+        await createPatient({
+          name: patientForm.name.trim(),
+          phone: patientForm.phone || null,
+          email: patientForm.email || null,
+          code: patientForm.code || null,
+        })
+      }
+      setPatientOpen(false)
+      setEditingPatientId(null)
+      setPatientForm({ name: '', phone: '', email: '', code: '' })
+      await reload()
+    } catch (err) {
+      setPatientFormError(err instanceof Error ? err.message : 'No se pudo guardar')
+    } finally {
+      setPatientSaving(false)
+    }
+  }
+
+  const handleDeletePatient = async () => {
+    if (!editingPatientId) return
+    setDeletingPatient(true)
+    setPatientFormError(null)
+    try {
+      const deleted = await deletePatient(editingPatientId)
+      setSnackbar({ open: true, kind: 'patient', item: deleted, message: 'Paciente eliminado' })
+      setPatientOpen(false)
+      setEditingPatientId(null)
+      setPatientForm({ name: '', phone: '', email: '', code: '' })
+      await reload()
+    } catch (err) {
+      setPatientFormError(err instanceof Error ? err.message : 'No se pudo eliminar')
+    } finally {
+      setDeletingPatient(false)
+    }
+  }
+
+  let sectionContent: ReactNode = null
+
   if (section === 'trabajos') {
     sectionContent = (
       <>
         <div className="flex flex-wrap items-center justify-end gap-4 mb-4">
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-              <Button className="bg-teal-600 text-white hover:bg-teal-500">
+              <Button
+                className="bg-teal-600 text-white hover:bg-teal-500"
+                onClick={() => {
+                  setEditingJobId(null)
+                  setForm(getEmptyJobForm())
+                  setOrderDateInteracted(false)
+                }}
+              >
                 <ClipboardPlus className="mr-2 h-4 w-4" /> Nuevo trabajo
               </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-lg">
               <DialogHeader>
-                <DialogTitle>Nuevo trabajo</DialogTitle>
-                <DialogDescription>Completa la información del nuevo trabajo</DialogDescription>
+                <DialogTitle>{editingJobId ? 'Editar trabajo' : 'Nuevo trabajo'}</DialogTitle>
+                <DialogDescription>
+                  Completa la información del {editingJobId ? 'trabajo' : 'nuevo trabajo'}
+                </DialogDescription>
               </DialogHeader>
-              <form onSubmit={async (e) => { e.preventDefault(); await handleCreate(); }} className="space-y-4">
+              <form
+                onSubmit={async (event) => {
+                  event.preventDefault()
+                  await handleSaveJob()
+                }}
+                className="space-y-4"
+              >
                 <div className="space-y-2">
                   <Label>Paciente</Label>
                   <Input
@@ -262,14 +600,6 @@ export const DashboardPage = () => {
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label>Salida trabajo</Label>
-                    <DatePicker
-                      date={form.order_date ? new Date(form.order_date) : undefined}
-                      setDate={(date) => setForm((prev) => ({ ...prev, order_date: date ? date.toISOString().slice(0, 10) : '' }))}
-                      placeholder="Selecciona la fecha de salida"
-                    />
-                  </div>
-                  <div className="space-y-2">
                     <Label>Especialista</Label>
                     <Select
                       value={form.specialist_id}
@@ -290,42 +620,74 @@ export const DashboardPage = () => {
                 </div>
                 <div className="space-y-2">
                   <Label>Estado</Label>
-                  <Select value={form.status} onValueChange={(value) => setForm((prev) => ({ ...prev, status: value as JobStatus }))}>
-                    <SelectTrigger>
+                  <Select
+                    value={form.status}
+                    onValueChange={(value) => setForm((prev) => ({ ...prev, status: value as JobStatus }))}
+                  >
+                    <SelectTrigger className={getStatusTextClass(form.status)}>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {STATUSES.map((status) => {
-                        let color = '';
-                        switch (status) {
-                          case 'En laboratorio':
-                            color = 'text-blue-600';
-                            break;
-                          case 'En clinica (sin citar)':
-                            color = 'text-yellow-600';
-                            break;
-                          case 'En clinica (citado)':
-                            color = 'text-green-600';
-                            break;
-                          case 'Cerrado':
-                            color = 'text-gray-500';
-                            break;
-                          default:
-                            color = '';
-                        }
-                        return (
-                          <SelectItem key={status} value={status} className={color}>
+                      {STATUSES.map((status) => (
+                        <SelectItem key={status} value={status} className={getStatusTextClass(status)}>
+                          <span className="flex items-center gap-2">
+                            {getStatusIcon(status)}
                             {status}
-                          </SelectItem>
-                        );
-                      })}
+                          </span>
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
+                <div className="space-y-2">
+                  <div className="text-sm font-semibold text-slate-700">Salida trabajo</div>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className="w-full justify-start text-left font-normal"
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {form.order_date ? format(form.order_date, 'dd/MM/yyyy', { locale: es }) : <span>Selecciona una fecha</span>}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={form.order_date}
+                        onSelect={(value) => {
+                          setForm((prev) => ({
+                            ...prev,
+                            order_date: value ?? prev.order_date ?? new Date(),
+                          }))
+                          setOrderDateInteracted(true)
+                        }}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
                 {formError && <p className="text-sm text-rose-600">{formError}</p>}
-                <Button type="submit" disabled={saving} className="w-full bg-teal-600 text-white hover:bg-teal-500">
-                  {saving ? 'Guardando...' : 'Guardar trabajo'}
-                </Button>
+                <div className="flex gap-4">
+                  {editingJobId && (
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      className="flex-1"
+                      disabled={deletingJob || saving}
+                      onClick={handleDeleteJob}
+                    >
+                      {deletingJob ? 'Eliminando...' : 'Eliminar trabajo'}
+                    </Button>
+                  )}
+                  <Button
+                    type="submit"
+                    className="flex-1 bg-teal-600 text-white hover:bg-teal-500"
+                    disabled={saving || deletingJob}
+                  >
+                    {saving ? 'Guardando...' : editingJobId ? 'Guardar cambios' : 'Guardar trabajo'}
+                  </Button>
+                </div>
               </form>
             </DialogContent>
           </Dialog>
@@ -342,39 +704,20 @@ export const DashboardPage = () => {
             </div>
             <div className="space-y-2">
               <Label>Estado</Label>
-              <Select
-                value={filters.estado}
-                onValueChange={(value) => setFilters((prev) => ({ ...prev, estado: value }))}
-              >
-                <SelectTrigger>
+              <Select value={filters.estado} onValueChange={(value) => setFilters((prev) => ({ ...prev, estado: value }))}>
+                <SelectTrigger className={filters.estado !== 'all' ? getStatusTextClass(filters.estado) : ''}>
                   <SelectValue placeholder="Todos" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todos</SelectItem>
-                  {STATUSES.map((status) => {
-                    let color = '';
-                    switch (status) {
-                      case 'En laboratorio':
-                        color = 'text-blue-600';
-                        break;
-                      case 'En clinica (sin citar)':
-                        color = 'text-yellow-600';
-                        break;
-                      case 'En clinica (citado)':
-                        color = 'text-green-600';
-                        break;
-                      case 'Cerrado':
-                        color = 'text-gray-500';
-                        break;
-                      default:
-                        color = '';
-                    }
-                    return (
-                      <SelectItem key={status} value={status} className={color}>
+                  {STATUSES.map((status) => (
+                    <SelectItem key={status} value={status} className={getStatusTextClass(status)}>
+                      <span className="flex items-center gap-2">
+                        {getStatusIcon(status)}
                         {status}
-                      </SelectItem>
-                    );
-                  })}
+                      </span>
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -397,123 +740,213 @@ export const DashboardPage = () => {
                 </SelectContent>
               </Select>
             </div>
+            <div className="space-y-4">
+              <Label>Transcurrido (días)</Label>
+              <div className="relative mt-2">
+                <input
+                  type="range"
+                  min={0}
+                  max={sliderMax}
+                  step={1}
+                  value={filters.maxDaysElapsed ?? 0}
+                  onChange={(e) => setFilters((prev) => ({ ...prev, maxDaysElapsed: Number(e.target.value) }))}
+                  className="w-full accent-teal-600 transition-all duration-150 ease-in-out disabled:cursor-not-allowed disabled:opacity-40"
+                  aria-label="Filtrar por días transcurridos"
+                  disabled={isElapsedDisabled}
+                />
+                <div
+                  className="absolute top-0 text-sm text-slate-600 pointer-events-none whitespace-nowrap transition-all duration-150 ease-in-out"
+                  style={{ left: `${sliderMax ? ((filters.maxDaysElapsed ?? 0) / sliderMax) * 100 : 0}%`, transform: 'translate(-50%, -100%)' }}
+                >
+                  {!isElapsedDisabled && filters.maxDaysElapsed && filters.maxDaysElapsed > 0 ? `≥ ${filters.maxDaysElapsed}d` : ''}
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="flex justify-start mt-4">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-xs hover:bg-rose-100 hover:text-rose-700"
+              onClick={() => setFilters(defaultFilters)}
+            >
+              Restablecer filtros
+              {activeFiltersCount > 0 && (
+                <span className="ml-2 inline-flex items-center rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700">
+                  {activeFiltersCount}
+                </span>
+              )}
+            </Button>
           </div>
         </Card>
         <Card className="mt-6 border-slate-200 bg-white">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="cursor-pointer pl-6" onClick={() => {
-                  setFilters(f => ({ ...f, sortBy: f.sortBy === 'paciente' ? 'paciente_desc' : 'paciente' }))
-                }}>
+                <TableHead
+                  className="cursor-pointer pl-6"
+                  onClick={() => {
+                    setFilters((f) => ({ ...f, sortBy: f.sortBy === 'paciente' ? 'paciente_desc' : 'paciente' }))
+                  }}
+                >
                   Paciente
                 </TableHead>
-                <TableHead className="cursor-pointer" onClick={() => {
-                  setFilters(f => ({ ...f, sortBy: f.sortBy === 'trabajo' ? 'trabajo_desc' : 'trabajo' }))
-                }}>
+                <TableHead
+                  className="cursor-pointer"
+                  onClick={() => {
+                    setFilters((f) => ({ ...f, sortBy: f.sortBy === 'trabajo' ? 'trabajo_desc' : 'trabajo' }))
+                  }}
+                >
                   Trabajo
                 </TableHead>
-                <TableHead className="cursor-pointer" onClick={() => {
-                  setFilters(f => ({ ...f, sortBy: f.sortBy === 'laboratorio' ? 'laboratorio_desc' : 'laboratorio' }))
-                }}>
+                <TableHead
+                  className="cursor-pointer"
+                  onClick={() => {
+                    setFilters((f) => ({ ...f, sortBy: f.sortBy === 'laboratorio' ? 'laboratorio_desc' : 'laboratorio' }))
+                  }}
+                >
                   Laboratorio
                 </TableHead>
-                <TableHead className="cursor-pointer" onClick={() => {
-                  setFilters(f => ({ ...f, sortBy: f.sortBy === 'fecha' ? 'fecha_desc' : 'fecha' }))
-                }}>
-                  Fecha
+                <TableHead
+                  className="cursor-pointer"
+                  onClick={() => {
+                    setFilters((f) => ({ ...f, sortBy: f.sortBy === 'especialista' ? 'especialista_desc' : 'especialista' }))
+                  }}
+                >
+                  Especialista
                 </TableHead>
-                <TableHead className="cursor-pointer" onClick={() => {
-                  setFilters(f => ({ ...f, sortBy: f.sortBy === 'estado' ? 'estado_desc' : 'estado' }))
-                }}>
+                <TableHead
+                  className="cursor-pointer"
+                  onClick={() => {
+                    setFilters((f) => ({ ...f, sortBy: f.sortBy === 'estado' ? 'estado_desc' : 'estado' }))
+                  }}
+                >
                   Estado
                 </TableHead>
+                <TableHead>Salida trabajo</TableHead>
                 <TableHead>Transcurrido</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading && (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-sm text-slate-500">
+                  <TableCell colSpan={7} className="text-center text-sm text-slate-500">
                     Cargando trabajos...
                   </TableCell>
                 </TableRow>
               )}
               {error && !loading && (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-sm text-rose-500">
+                  <TableCell colSpan={7} className="text-center text-sm text-rose-500">
                     {error}
                   </TableCell>
                 </TableRow>
               )}
               {!loading && !error && filteredJobs.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-sm text-slate-500">
+                  <TableCell colSpan={7} className="text-center text-sm text-slate-500">
                     No hay trabajos con esos filtros.
                   </TableCell>
                 </TableRow>
               )}
-              {!loading && !error && filteredJobs.map((job) => {
-                // Calcular tiempo transcurrido desde la fecha de pedido
-                let transcurrido = '-';
-                if (job.order_date) {
-                  const orderDate = new Date(job.order_date);
-                  const now = new Date();
-                  const diffMs = now.getTime() - orderDate.getTime();
-                  if (!isNaN(diffMs) && diffMs > 0) {
-                    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-                    const diffHours = Math.floor((diffMs / (1000 * 60 * 60)) % 24);
-                    const diffMinutes = Math.floor((diffMs / (1000 * 60)) % 60);
-                    if (diffDays > 0) {
-                      transcurrido = `${diffDays}d ${diffHours}h`;
-                    } else if (diffHours > 0) {
-                      transcurrido = `${diffHours}h ${diffMinutes}m`;
-                    } else {
-                      transcurrido = `${diffMinutes}m`;
-                    }
-                  }
+              {!loading &&
+                !error &&
+                filteredJobs.map((job) => {
+                  return (
+                    <TableRow
+                      key={job.id}
+                      onClick={() => {
+                        setEditingJobId(job.id)
+                        setForm({
+                          patient_name: job.patient_name,
+                          patient_phone: job.patient_phone || '',
+                          job_description: job.job_description || '',
+                          laboratory_id: job.laboratory_id || '',
+                          specialist_id: job.specialist_id || '',
+                          order_date: job.order_date ? parseISO(job.order_date) : new Date(),
+                          status: job.status,
+                        })
+                        setOrderDateInteracted(true)
+                        setOpen(true)
+                      }}
+                      className="cursor-pointer hover:bg-slate-50"
+                    >
+                      <TableCell className="font-medium pl-6">{job.patient_name}</TableCell>
+                      <TableCell>{job.job_description || 'Sin descripcion'}</TableCell>
+                      <TableCell>{labs.find((lab) => lab.id === job.laboratory_id)?.name || '-'}</TableCell>
+                      <TableCell>{specialists.find((spec) => spec.id === job.specialist_id)?.name || '-'}</TableCell>
+                      <TableCell>
+                        <span
+                          className={
+                            job.status === 'En laboratorio'
+                              ? 'inline-flex items-center gap-1.5 rounded-full bg-yellow-50 px-3 py-1 text-xs font-medium text-yellow-700'
+                              : job.status === 'En clinica (sin citar)'
+                                ? 'inline-flex items-center gap-1.5 rounded-full bg-orange-100 px-3 py-1 text-xs font-medium text-orange-800'
+                                : job.status === 'En clinica (citado)'
+                                  ? 'inline-flex items-center gap-1.5 rounded-full bg-purple-50 px-3 py-1 text-xs font-medium text-purple-700'
+                                  : job.status === 'Cerrado'
+                                    ? 'inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700'
+                                    : 'inline-flex items-center gap-1.5 rounded-full bg-teal-50 px-3 py-1 text-xs font-medium text-teal-700'
+                          }
+                        >
+                          {job.status === 'En laboratorio' && <FlaskConical className="h-3 w-3" />}
+                          {job.status === 'En clinica (sin citar)' && <Clock className="h-3 w-3" />}
+                          {job.status === 'En clinica (citado)' && <CalendarCheck className="h-3 w-3" />}
+                          {job.status === 'Cerrado' && <Archive className="h-3 w-3" />}
+                          {job.status}
+                        </span>
+                      </TableCell>
+                      <TableCell>{job.order_date ? format(parseISO(job.order_date), 'dd/MM/yyyy', { locale: es }) : '-'}</TableCell>
+                      <TableCell>
+                        {job.order_date ? capitalizeFirst(formatDistanceToNow(parseISO(job.order_date), { locale: es, addSuffix: true })) : '-'}
+                      </TableCell>
+                    </TableRow>
+                  )
                 }
-                return (
-                  <TableRow key={job.id}>
-                    <TableCell className="font-medium pl-6">{job.patient_name}</TableCell>
-                    <TableCell>{job.job_description || 'Sin descripcion'}</TableCell>
-                    <TableCell>{labs.find((lab) => lab.id === job.laboratory_id)?.name || '-'}</TableCell>
-                    <TableCell>{job.order_date ? format(new Date(job.order_date), 'dd-MM-yyyy') : '-'}</TableCell>
-                    <TableCell>
-                      <span className="rounded-full bg-teal-50 px-3 py-1 text-xs font-medium text-teal-700">
-                        {job.status}
-                      </span>
-                    </TableCell>
-                    <TableCell>{transcurrido}</TableCell>
-                  </TableRow>
-                );
-              })}
+                )}
             </TableBody>
           </Table>
         </Card>
       </>
-    );
+    )
   } else if (section === 'laboratorios') {
     sectionContent = (
       <>
         <div className="flex flex-wrap items-center justify-end gap-4 mb-4">
-          <Dialog open={labOpen} onOpenChange={setLabOpen}>
+          <Dialog
+            open={labOpen}
+            onOpenChange={(value) => {
+              setLabOpen(value)
+              if (!value) {
+                setEditingLabId(null)
+                setLabForm({ name: '', phone: '', email: '' })
+              }
+            }}
+          >
             <DialogTrigger asChild>
               <Button className="bg-teal-600 text-white hover:bg-teal-500">
-                <FlaskConical className="mr-2 h-4 w-4" /> Nuevo laboratorio
+                <FlaskConical className="mr-2 h-4 w-4" /> {editingLabId ? 'Editar laboratorio' : 'Nuevo laboratorio'}
               </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-lg">
               <DialogHeader>
-                <DialogTitle>Nuevo laboratorio</DialogTitle>
-                <DialogDescription>Completa la información del nuevo laboratorio</DialogDescription>
+                <DialogTitle>{editingLabId ? 'Editar laboratorio' : 'Nuevo laboratorio'}</DialogTitle>
+                <DialogDescription>
+                  Completa la información del {editingLabId ? 'laboratorio' : 'nuevo laboratorio'}
+                </DialogDescription>
               </DialogHeader>
-              <form onSubmit={async (e) => { e.preventDefault(); await handleCreateLab(); }} className="space-y-4">
+              <form
+                onSubmit={async (event) => {
+                  event.preventDefault()
+                  await handleCreateLab()
+                }}
+                className="space-y-4"
+              >
                 <div className="space-y-2">
                   <Label>Nombre</Label>
                   <Input
                     value={labForm.name}
-                    onChange={e => setLabForm(f => ({ ...f, name: e.target.value }))}
+                    onChange={(event) => setLabForm((prev) => ({ ...prev, name: event.target.value }))}
                     placeholder="Nombre del laboratorio"
                   />
                 </div>
@@ -521,7 +954,7 @@ export const DashboardPage = () => {
                   <Label>Móvil</Label>
                   <Input
                     value={labForm.phone}
-                    onChange={e => setLabForm(f => ({ ...f, phone: e.target.value }))}
+                    onChange={(event) => setLabForm((prev) => ({ ...prev, phone: event.target.value }))}
                     placeholder="Teléfono de contacto"
                   />
                 </div>
@@ -529,50 +962,92 @@ export const DashboardPage = () => {
                   <Label>Email</Label>
                   <Input
                     value={labForm.email}
-                    onChange={e => setLabForm(f => ({ ...f, email: e.target.value }))}
+                    onChange={(event) => setLabForm((prev) => ({ ...prev, email: event.target.value }))}
                     placeholder="Email del laboratorio"
                   />
                 </div>
                 {labFormError && <p className="text-sm text-rose-600">{labFormError}</p>}
-                <Button type="submit" disabled={labSaving} className="w-full bg-teal-600 text-white hover:bg-teal-500">
-                  {labSaving ? 'Guardando...' : 'Guardar laboratorio'}
-                </Button>
+                <div className="flex gap-4">
+                  {editingLabId && (
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      className="flex-1"
+                      disabled={labSaving || deletingLab}
+                      onClick={handleDeleteLab}
+                    >
+                      {deletingLab ? 'Eliminando...' : 'Eliminar laboratorio'}
+                    </Button>
+                  )}
+                  <Button
+                    type="submit"
+                    disabled={labSaving || deletingLab}
+                    className="flex-1 bg-teal-600 text-white hover:bg-teal-500"
+                  >
+                    {labSaving ? 'Guardando...' : editingLabId ? 'Guardar cambios' : 'Guardar laboratorio'}
+                  </Button>
+                </div>
               </form>
             </DialogContent>
           </Dialog>
         </div>
 
         <Filtros
-          filters={{ paciente: labsFilters.nombre }}
-          setFilters={(fn) => setLabsFilters((f) => ({ ...f, nombre: fn(f).paciente }))}
+          filters={labsFilters}
+          setFilters={setLabsFilters}
           showPaciente={true}
           showLaboratorio={false}
           showEstado={false}
         />
-        <LaboratoriesTable labs={labs} filter={labsFilters.nombre} />
+        <LaboratoriesTable
+          labs={labs}
+          filter={labsFilters.paciente ?? ''}
+          onEdit={(lab) => {
+            setEditingLabId(lab.id)
+            setLabForm({ name: lab.name, phone: lab.phone || '', email: lab.email || '' })
+            setLabOpen(true)
+          }}
+        />
       </>
-    );
+    )
   } else if (section === 'especialistas') {
     sectionContent = (
       <>
         <div className="flex flex-wrap items-center justify-end gap-4 mb-4">
-          <Dialog open={specOpen} onOpenChange={setSpecOpen}>
+          <Dialog
+            open={specOpen}
+            onOpenChange={(value) => {
+              setSpecOpen(value)
+              if (!value) {
+                setEditingSpecId(null)
+                setSpecForm({ name: '', specialty: '', phone: '', email: '' })
+              }
+            }}
+          >
             <DialogTrigger asChild>
               <Button className="bg-teal-600 text-white hover:bg-teal-500">
-                <Stethoscope className="mr-2 h-4 w-4" /> Nuevo especialista
+                <Stethoscope className="mr-2 h-4 w-4" /> {editingSpecId ? 'Editar especialista' : 'Nuevo especialista'}
               </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-lg">
               <DialogHeader>
-                <DialogTitle>Nuevo especialista</DialogTitle>
-                <DialogDescription>Completa la información del nuevo especialista</DialogDescription>
+                <DialogTitle>{editingSpecId ? 'Editar especialista' : 'Nuevo especialista'}</DialogTitle>
+                <DialogDescription>
+                  Completa la información del {editingSpecId ? 'especialista' : 'nuevo especialista'}
+                </DialogDescription>
               </DialogHeader>
-              <form onSubmit={async (e) => { e.preventDefault(); await handleCreateSpec(); }} className="space-y-4">
+              <form
+                onSubmit={async (event) => {
+                  event.preventDefault()
+                  await handleCreateSpec()
+                }}
+                className="space-y-4"
+              >
                 <div className="space-y-2">
                   <Label>Nombre</Label>
                   <Input
                     value={specForm.name}
-                    onChange={e => setSpecForm(f => ({ ...f, name: e.target.value }))}
+                    onChange={(event) => setSpecForm((prev) => ({ ...prev, name: event.target.value }))}
                     placeholder="Nombre del especialista"
                   />
                 </div>
@@ -580,7 +1055,7 @@ export const DashboardPage = () => {
                   <Label>Especialidad</Label>
                   <Input
                     value={specForm.specialty}
-                    onChange={e => setSpecForm(f => ({ ...f, specialty: e.target.value }))}
+                    onChange={(event) => setSpecForm((prev) => ({ ...prev, specialty: event.target.value }))}
                     placeholder="Especialidad"
                   />
                 </div>
@@ -588,7 +1063,7 @@ export const DashboardPage = () => {
                   <Label>Móvil</Label>
                   <Input
                     value={specForm.phone}
-                    onChange={e => setSpecForm(f => ({ ...f, phone: e.target.value }))}
+                    onChange={(event) => setSpecForm((prev) => ({ ...prev, phone: event.target.value }))}
                     placeholder="Teléfono de contacto"
                   />
                 </div>
@@ -596,36 +1071,187 @@ export const DashboardPage = () => {
                   <Label>Email</Label>
                   <Input
                     value={specForm.email}
-                    onChange={e => setSpecForm(f => ({ ...f, email: e.target.value }))}
+                    onChange={(event) => setSpecForm((prev) => ({ ...prev, email: event.target.value }))}
                     placeholder="Email del especialista"
                   />
                 </div>
                 {specFormError && <p className="text-sm text-rose-600">{specFormError}</p>}
-                <Button type="submit" disabled={specSaving} className="w-full bg-teal-600 text-white hover:bg-teal-500">
-                  {specSaving ? 'Guardando...' : 'Guardar especialista'}
-                </Button>
+                <div className="flex gap-4">
+                  {editingSpecId && (
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      className="flex-1"
+                      disabled={specSaving || deletingSpec}
+                      onClick={handleDeleteSpec}
+                    >
+                      {deletingSpec ? 'Eliminando...' : 'Eliminar especialista'}
+                    </Button>
+                  )}
+                  <Button
+                    type="submit"
+                    disabled={specSaving || deletingSpec}
+                    className="flex-1 bg-teal-600 text-white hover:bg-teal-500"
+                  >
+                    {specSaving ? 'Guardando...' : editingSpecId ? 'Guardar cambios' : 'Guardar especialista'}
+                  </Button>
+                </div>
               </form>
             </DialogContent>
           </Dialog>
         </div>
 
         <Filtros
-          filters={{ paciente: specialistsFilters.nombre }}
-          setFilters={(fn) => setSpecialistsFilters((f) => ({ ...f, nombre: fn(f).paciente }))}
+          filters={specialistsFilters}
+          setFilters={setSpecialistsFilters}
           showPaciente={true}
           showLaboratorio={false}
           showEstado={false}
         />
-        <SpecialistsTable specialists={specialists} filter={specialistsFilters.nombre} />
+        <SpecialistsTable
+          specialists={specialists}
+          filter={specialistsFilters.paciente ?? ''}
+          onEdit={(spec) => {
+            setEditingSpecId(spec.id)
+            setSpecForm({
+              name: spec.name,
+              specialty: spec.specialty || '',
+              phone: spec.phone || '',
+              email: spec.email || '',
+            })
+            setSpecOpen(true)
+          }}
+        />
       </>
-    );
+    )
+  } else if (section === 'pacientes') {
+    sectionContent = (
+      <>
+        <div className="flex flex-wrap items-center justify-end gap-4 mb-4">
+          <Dialog
+            open={patientOpen}
+            onOpenChange={(value) => {
+              setPatientOpen(value)
+              if (!value) {
+                setEditingPatientId(null)
+                setPatientForm({ name: '', phone: '', email: '', code: '' })
+              }
+            }}
+          >
+            <DialogTrigger asChild>
+              <Button className="bg-teal-600 text-white hover:bg-teal-500">
+                <UserRound className="mr-2 h-4 w-4" /> {editingPatientId ? 'Editar paciente' : 'Nuevo paciente'}
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-lg">
+              <DialogHeader>
+                <DialogTitle>{editingPatientId ? 'Editar paciente' : 'Nuevo paciente'}</DialogTitle>
+                <DialogDescription>
+                  Completa la informacion del {editingPatientId ? 'paciente' : 'nuevo paciente'}
+                </DialogDescription>
+              </DialogHeader>
+              <form
+                onSubmit={async (event) => {
+                  event.preventDefault()
+                  await handleSavePatient()
+                }}
+                className="space-y-4"
+              >
+                <div className="space-y-2">
+                  <Label>Codigo</Label>
+                  <Input
+                    value={patientForm.code}
+                    onChange={(event) => setPatientForm((prev) => ({ ...prev, code: event.target.value }))}
+                    placeholder="Codigo del paciente"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Nombre</Label>
+                  <Input
+                    value={patientForm.name}
+                    onChange={(event) => setPatientForm((prev) => ({ ...prev, name: event.target.value }))}
+                    placeholder="Nombre del paciente"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Movil</Label>
+                  <Input
+                    value={patientForm.phone}
+                    onChange={(event) => setPatientForm((prev) => ({ ...prev, phone: event.target.value }))}
+                    placeholder="Telefono del paciente"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Email</Label>
+                  <Input
+                    value={patientForm.email}
+                    onChange={(event) => setPatientForm((prev) => ({ ...prev, email: event.target.value }))}
+                    placeholder="Email del paciente"
+                  />
+                </div>
+                {patientFormError && <p className="text-sm text-rose-600">{patientFormError}</p>}
+                <div className="flex gap-4">
+                  {editingPatientId && (
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      className="flex-1"
+                      disabled={patientSaving || deletingPatient}
+                      onClick={handleDeletePatient}
+                    >
+                      {deletingPatient ? 'Eliminando...' : 'Eliminar paciente'}
+                    </Button>
+                  )}
+                  <Button
+                    type="submit"
+                    disabled={patientSaving || deletingPatient}
+                    className="flex-1 bg-teal-600 text-white hover:bg-teal-500"
+                  >
+                    {patientSaving ? 'Guardando...' : editingPatientId ? 'Guardar cambios' : 'Guardar paciente'}
+                  </Button>
+                </div>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
+
+        <Filtros
+          filters={patientsFilters}
+          setFilters={setPatientsFilters}
+          showPaciente={true}
+          showLaboratorio={false}
+          showEstado={false}
+        />
+        <PatientsTable
+          patients={patients}
+          filter={patientsFilters.paciente ?? ''}
+          onEdit={(patient) => {
+            setEditingPatientId(patient.id)
+            setPatientForm({
+              name: patient.name,
+              phone: patient.phone || '',
+              email: patient.email || '',
+              code: patient.code || '',
+            })
+            setPatientOpen(true)
+          }}
+        />
+      </>
+    )
   }
+
   return (
     <div className="min-h-screen bg-slate-100">
-      <div className="mx-auto max-w-6xl px-6 py-10">
-        {/* Título eliminado, el nombre de la clínica se pasará a Sidebar */}
-        {sectionContent}
-      </div>
+      <div className="mx-auto w-full px-6 py-10">{sectionContent}</div>
+      <Snackbar
+        open={!!snackbar.open}
+        message={snackbar.message || ''}
+        actionLabel="Deshacer"
+        onAction={handleUndo}
+        onClose={() => setSnackbar({ open: false })}
+      />
     </div>
-  );
+  )
 }
+
+export default DashboardPage

@@ -41,7 +41,7 @@ export const LandingPage = () => {
         <main className="relative z-10 px-6 pb-24 pt-16">
           <div className="mx-auto grid max-w-6xl gap-12 lg:grid-cols-[1.1fr_0.9fr]">
             <div>
-              <p className="text-sm uppercase tracking-[0.3em] text-teal-600">DentLab SaaS</p>
+              <p className="text-sm uppercase tracking-[0.3em] text-teal-600">Labtrack SaaS</p>
               <h1 className="mt-4 text-4xl font-semibold leading-tight sm:text-5xl">
                 Control total del flujo entre clinica y laboratorio
               </h1>
@@ -87,23 +87,29 @@ export const LandingPage = () => {
                 </div>
                 <div className="mt-6 space-y-3">
                   {[
-                    ['Protesis fija', 'Laboratorio DentaLab', 'En laboratorio', 'text-blue-600'],
-                    ['Carilla estetica', 'SmileCraft', 'En clinica (citado)', 'text-green-600'],
-                    ['Puente superior', 'OrtoLab', 'En clinica (sin citar)', 'text-yellow-600'],
-                  ].map(([job, lab, status, color]) => (
-                    <div
-                      key={job}
-                      className="flex items-center justify-between rounded-xl border border-slate-200 bg-white/80 px-4 py-3 dark:bg-background dark:border-border"
-                    >
-                      <div>
-                        <p className="text-sm font-medium text-slate-900 dark:text-white">{job}</p>
-                        <p className="text-xs text-slate-500 dark:text-slate-400">{lab}</p>
+                    ['Protesis fija', 'Laboratorio Labtrack', 'En laboratorio'],
+                    ['Carilla estetica', 'SmileCraft', 'En clinica (citado)'],
+                    ['Puente superior', 'OrtoLab', 'En clinica (sin citar)'],
+                  ].map(([job, lab, status]) => {
+                    const pillClass =
+                      status === 'En laboratorio' ? 'rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700' :
+                        status === 'En clinica (sin citar)' ? 'rounded-full bg-yellow-50 px-3 py-1 text-xs font-medium text-yellow-700' :
+                          status === 'En clinica (citado)' ? 'rounded-full bg-green-50 px-3 py-1 text-xs font-medium text-green-700' :
+                            status === 'Cerrado' ? 'rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600' :
+                              'rounded-full bg-teal-50 px-3 py-1 text-xs font-medium text-teal-700';
+                    return (
+                      <div
+                        key={job}
+                        className="flex items-center justify-between rounded-xl border border-slate-200 bg-white/80 px-4 py-3 dark:bg-background dark:border-border"
+                      >
+                        <div>
+                          <p className="text-sm font-medium text-slate-900 dark:text-white">{job}</p>
+                          <p className="text-xs text-slate-500 dark:text-slate-400">{lab}</p>
+                        </div>
+                        <span className={pillClass}>{status}</span>
                       </div>
-                      <span className={`rounded-full bg-teal-50 px-3 py-1 text-xs font-medium text-teal-700 ${color}`}>
-                        {status}
-                      </span>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               </div>
             </div>

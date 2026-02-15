@@ -42,7 +42,7 @@ Este documento es la fuente de verdad absoluta para cualquier agente de IA. Esta
 
 ## 🛠 4. Git & Operaciones
 - **Push como Despliegue:** No hagas `git push` a menos que se te pida explícitamente o la tarea esté terminada y validada localmente. **Push = Producción.**
-- **Validación Local:** Asegúrate de que el entorno local funciona perfectamente antes de dar una tarea por finalizada.
+- **Validación Local:** Asegúrate de que el entorno local funciona perfectamente antes de dar una tarea por finalizada (ejecutando npm run lint --silent).
 - **Mensajes de Commit:** Usa mensajes descriptivos que reflejen los cambios en la infraestructura o base de datos.
 
 ## 🗣 5. Protocolo de Comunicación
