@@ -573,13 +573,17 @@ function DashboardPage() {
                       onValueChange={(value) => setForm((prev) => ({ ...prev, patient_id: value }))}
                     >
                       <SelectTrigger>
+                      {form.patient_id ? (
                         <div className="flex items-center gap-3 w-full justify-start">
                           <span className="w-10 text-left text-xs text-slate-500">{patients.find((p) => p.id === form.patient_id)?.code || '-'}</span>
                           <span className="flex-1 truncate text-sm text-slate-700 text-left">
-                            {form.patient_id ? patients.find((p) => p.id === form.patient_id)?.name : 'Selecciona un paciente'}
+                            {patients.find((p) => p.id === form.patient_id)?.name}
                           </span>
                         </div>
-                      </SelectTrigger>
+                      ) : (
+                        <div className="w-full text-left text-sm text-slate-500">Seleccionar paciente</div>
+                      )}
+                    </SelectTrigger>
                       <SelectContent className="!p-0">
                         <div className="p-2">
                           <Input
@@ -593,12 +597,11 @@ function DashboardPage() {
                           .filter((p) => p.name.toLowerCase().includes(patientQuery.toLowerCase()))
                           .map((p) => (
                             <SelectItem key={p.id} value={p.id} className="pl-1">
-                              <div className="flex items-center justify-between w-full">
+                              <div className="flex items-center justify-start w-full">
                                 <div className="flex items-center gap-2">
                                   <span className="w-10 text-right text-xs text-slate-500">{p.code || '-'}</span>
                                   <span className="truncate">{p.name}</span>
                                 </div>
-                                <small className="text-xs text-slate-400">{p.phone || ''}</small>
                               </div>
                             </SelectItem>
                           ))}
