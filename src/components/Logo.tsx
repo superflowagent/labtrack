@@ -1,13 +1,17 @@
-import { Stethoscope } from 'lucide-react'
-
 export const Logo = () => (
-  <div className="flex items-center gap-2 text-teal-700">
-    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-teal-100">
-      <Stethoscope className="h-5 w-5" aria-hidden />
+  <div className="flex flex-col items-start text-teal-700">
+    <div className="flex items-center gap-2">
+      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-teal-100">
+        <img src="/favicon.svg" alt="Labtrack logo" className="h-8 w-8" />
+      </div>
+      <div className="text-2xl font-bold">
+        <span style={{ color: '#545454' }}>Lab</span>
+        <span style={{ color: '#14b8a6' }}>track</span>
+      </div>
     </div>
-    <div className="leading-tight">
-      <div className="text-base font-semibold">DentLab</div>
-      <div className="text-xs text-teal-600">Tracking odontologico</div>
+    <div className="mt-2 text-sm text-teal-600 text-left">
+      <span className="block">Seguimiento de órdenes de</span>
+      <span className="block">trabajo odontológicas</span>
     </div>
   </div>
 )

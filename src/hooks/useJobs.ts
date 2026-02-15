@@ -1,17 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import type { Job, Laboratory, NewJob, Specialist } from '@/types/domain'
-import { createJob, fetchJobs, fetchLaboratories, fetchSpecialists, getClinicIdForUser } from '@/services/supabase/queries'
-
-export type JobFilters = {
-  paciente: string
-  laboratorioId: string
-  fecha: string
-}
+import type { Job, Laboratory, NewJob, Patient, Specialist } from '@/types/domain'
+import { createJob, fetchJobs, fetchLaboratories, fetchPatients, fetchSpecialists, getClinicIdForUser } from '@/services/supabase/queries'
 
 export const useJobs = () => {
   const [jobs, setJobs] = useState<Job[]>([])
   const [labs, setLabs] = useState<Laboratory[]>([])
   const [specialists, setSpecialists] = useState<Specialist[]>([])
+  const [patients, setPatients] = useState<Patient[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [clinicId, setClinicId] = useState<string | null>(null)
@@ -23,14 +18,16 @@ export const useJobs = () => {
     try {
       const id = clinicId ?? (await getClinicIdForUser())
       setClinicId(id)
-      const [jobsData, labsData, specialistsData] = await Promise.all([
+      const [jobsData, labsData, specialistsData, patientsData] = await Promise.all([
         fetchJobs(id),
         fetchLaboratories(id),
         fetchSpecialists(id),
+        fetchPatients(id),
       ])
       setJobs(jobsData)
       setLabs(labsData)
       setSpecialists(specialistsData)
+      setPatients(patientsData)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error cargando datos')
     } finally {
@@ -55,7 +52,7 @@ export const useJobs = () => {
   )
 
   return useMemo(
-    () => ({ jobs, labs, specialists, loading, error, reload: load, addJob }),
-    [jobs, labs, specialists, loading, error, load, addJob],
+    () => ({ jobs, labs, specialists, patients, loading, error, reload: load, addJob }),
+    [jobs, labs, specialists, patients, loading, error, load, addJob],
   )
 }

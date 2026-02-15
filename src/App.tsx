@@ -2,7 +2,7 @@
 import { Navigate, Route, Routes, Outlet } from 'react-router-dom'
 import { LandingPage } from '@/pages/LandingPage'
 import { LoginPage } from '@/pages/LoginPage'
-import { DashboardPage } from '@/pages/DashboardPage'
+import DashboardPage from '@/pages/DashboardPage'
 import { Sidebar } from '@/components/Sidebar'
 // removed unused import (LaboratoriesPage / SpecialistsPage are routed from DashboardPage now)
 
