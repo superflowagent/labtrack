@@ -33,6 +33,17 @@ jobs:
       - name: Verify Supabase CLI
         run: supabase --version
 
+      - name: Validate Supabase secrets
+        run: |
+          if [ -z "$SUPABASE_PROJECT_REF" ]; then
+            echo "ERROR: SUPABASE_PROJECT_REF is not set. Add it to repository secrets." >&2
+            exit 1
+          fi
+          if [ -z "$SUPABASE_ACCESS_TOKEN" ]; then
+            echo "ERROR: SUPABASE_ACCESS_TOKEN is not set. Add it to repository secrets." >&2
+            exit 1
+          fi
+
       - name: Ensure migrations exist (debug)
         run: |
           echo "migrations folder:"
@@ -42,7 +53,7 @@ jobs:
         id: db_push
         run: |
           echo "Applying migrations to Supabase project: $SUPABASE_PROJECT_REF"
-          supabase db push --project-ref "$SUPABASE_PROJECT_REF" --yes
+          supabase db push --yes
 
       - name: Check for local Edge Functions
         id: check_functions
@@ -57,11 +68,11 @@ jobs:
         if: steps.check_functions.outputs.functions_present == 'true'
         run: |
           echo "Deploying Edge Functions to Supabase project: $SUPABASE_PROJECT_REF"
-          supabase functions deploy --project-ref "$SUPABASE_PROJECT_REF" --no-verify-jwt --prune
+          supabase functions deploy --no-verify-jwt --prune
 
       - name: List deployed functions (verification)
         if: steps.check_functions.outputs.functions_present == 'true'
-        run: supabase functions list --project-ref "$SUPABASE_PROJECT_REF"
+        run: supabase functions list
 
       - name: Finished
         run: echo "Supabase deploy workflow completed."
