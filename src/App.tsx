@@ -4,7 +4,7 @@ import { LandingPage } from '@/pages/LandingPage'
 import { LoginPage } from '@/pages/LoginPage'
 import { DashboardPage } from '@/pages/DashboardPage'
 import { Sidebar } from '@/components/Sidebar'
-import LaboratoriesPage, { SpecialistsPage } from '@/pages/LaboratoriesPage'
+// removed unused import (LaboratoriesPage / SpecialistsPage are routed from DashboardPage now)
 
 
 const DashboardLayout = () => (

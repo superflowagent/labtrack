@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { LaboratoriesTable, SpecialistsTable } from './LaboratoriesSpecialistsTables';
 import type { Laboratory, Specialist } from '../types/domain';
-import { Card } from '@/components/ui/card';
 import { Filtros } from '@/components/Filtros';
 
 import { Button } from '@/components/ui/button';

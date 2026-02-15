@@ -1,34 +1,17 @@
-import { NavLink } from 'react-router-dom'
 import { LayoutList, FlaskConical, Stethoscope, LogOut } from 'lucide-react'
 import { Logo } from './Logo'
 
-const navItems = [
-    {
-        label: 'Trabajos',
-        tab: 'trabajos',
-        icon: LayoutList,
-    },
-    {
-        label: 'Laboratorios',
-        tab: 'laboratorios',
-        icon: FlaskConical,
-    },
-    {
-        label: 'Especialistas',
-        tab: 'especialistas',
-        icon: Stethoscope,
-    },
+const navItems: { label: string; tab: 'trabajos' | 'laboratorios' | 'especialistas'; icon: any }[] = [
+    { label: 'Trabajos', tab: 'trabajos', icon: LayoutList },
+    { label: 'Laboratorios', tab: 'laboratorios', icon: FlaskConical },
+    { label: 'Especialistas', tab: 'especialistas', icon: Stethoscope },
 ]
 
 
 import { signOut } from '@/services/supabase/auth'
 import { useEffect, useState } from 'react';
 
-import { useNavigate, useLocation } from 'react-router-dom';
-
 export function Sidebar() {
-    const navigate = useNavigate();
-    const location = useLocation();
     const [clinicName, setClinicName] = useState<string | null>(null);
     useEffect(() => {
         // Escuchar cambios en window.clinicName mediante un evento personalizado

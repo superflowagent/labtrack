@@ -5,13 +5,21 @@ import type { Laboratory, Specialist } from '@/types/domain';
 
 // Props: labs: Laboratory[]
 export function LaboratoriesTable({ labs, filter }: { labs: Laboratory[]; filter?: string }) {
-    const [sortBy, setSortBy] = useState<'name' | 'phone'>('name');
+    const [sortBy, setSortBy] = useState<'name' | 'phone' | 'email'>('name');
     const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
 
     const appliedFilter = (filter || '').toLowerCase();
 
     const sortedLabs = useMemo(() => {
-        let filtered = labs.filter(lab => lab.name.toLowerCase().includes(appliedFilter));
+        const q = appliedFilter;
+        let filtered = labs.filter(lab => {
+            if (!q) return true;
+            return (
+                (lab.name || '').toLowerCase().includes(q) ||
+                (lab.phone || '').toLowerCase().includes(q) ||
+                (lab.email || '').toLowerCase().includes(q)
+            );
+        });
         filtered = filtered.sort((a, b) => {
             const aVal = a[sortBy] || '';
             const bVal = b[sortBy] || '';
@@ -22,7 +30,7 @@ export function LaboratoriesTable({ labs, filter }: { labs: Laboratory[]; filter
         return filtered;
     }, [labs, sortBy, sortDir, filter]);
 
-    const handleSort = (col: 'name' | 'phone') => {
+    const handleSort = (col: 'name' | 'phone' | 'email') => {
         if (sortBy === col) setSortDir(d => (d === 'asc' ? 'desc' : 'asc'));
         else {
             setSortBy(col);
@@ -42,12 +50,15 @@ export function LaboratoriesTable({ labs, filter }: { labs: Laboratory[]; filter
                             <TableHead className="cursor-pointer" onClick={() => handleSort('phone')}>
                                 Móvil {sortBy === 'phone' ? (sortDir === 'asc' ? '▲' : '▼') : ''}
                             </TableHead>
+                            <TableHead className="cursor-pointer" onClick={() => handleSort('email')}>
+                                Email {sortBy === 'email' ? (sortDir === 'asc' ? '▲' : '▼') : ''}
+                            </TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {sortedLabs.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={2} className="text-center text-sm text-slate-500">
+                                <TableCell colSpan={3} className="text-center text-sm text-slate-500">
                                     No hay laboratorios.
                                 </TableCell>
                             </TableRow>
@@ -56,6 +67,7 @@ export function LaboratoriesTable({ labs, filter }: { labs: Laboratory[]; filter
                                 <TableRow key={lab.id}>
                                     <TableCell>{lab.name}</TableCell>
                                     <TableCell>{lab.phone || '-'}</TableCell>
+                                    <TableCell>{lab.email || '-'}</TableCell>
                                 </TableRow>
                             ))
                         )}
@@ -75,7 +87,16 @@ export function SpecialistsTable({ specialists, filter }: { specialists: Special
     const appliedSpecFilter = (filter || '').toLowerCase();
 
     const sortedSpecs = useMemo(() => {
-        let filtered = specialists.filter(s => s.name.toLowerCase().includes(appliedSpecFilter));
+        const q = appliedSpecFilter;
+        let filtered = specialists.filter(s => {
+            if (!q) return true;
+            return (
+                (s.name || '').toLowerCase().includes(q) ||
+                (s.specialty || '').toLowerCase().includes(q) ||
+                (s.phone || '').toLowerCase().includes(q) ||
+                (s.email || '').toLowerCase().includes(q)
+            );
+        });
         filtered = filtered.sort((a, b) => {
             const aVal = a[sortBy] || '';
             const bVal = b[sortBy] || '';

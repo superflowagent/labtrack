@@ -50,15 +50,13 @@ export const DashboardPage = () => {
   // Exponer setSection globalmente para Sidebar
   window.setDashboardSection = setSection;
 
-  const [clinic, setClinic] = useState<{ name: string } | null>(null)
   useEffect(() => {
-    getClinicForUser().then((clinic) => {
-      setClinic(clinic);
-      if (clinic?.name) {
-        window.clinicName = clinic.name;
+    getClinicForUser().then((c) => {
+      if (c?.name) {
+        window.clinicName = c.name;
         window.dispatchEvent(new Event('clinicNameChanged'));
       }
-    }).catch(() => setClinic(null))
+    }).catch(() => {/* ignore */ })
   }, [])
   const { jobs, labs, specialists, loading, error, addJob, reload } = useJobs()
   const [filters, setFilters] = useState({ paciente: '', laboratorioId: 'all', estado: 'all', sortBy: 'fecha' })
@@ -551,7 +549,7 @@ export const DashboardPage = () => {
           showLaboratorio={false}
           showEstado={false}
         />
-        <LaboratoriesTable labs={labs} />
+        <LaboratoriesTable labs={labs} filter={labsFilters.nombre} />
       </>
     );
   } else if (section === 'especialistas') {
@@ -618,7 +616,7 @@ export const DashboardPage = () => {
           showLaboratorio={false}
           showEstado={false}
         />
-        <SpecialistsTable specialists={specialists} />
+        <SpecialistsTable specialists={specialists} filter={specialistsFilters.nombre} />
       </>
     );
   }
