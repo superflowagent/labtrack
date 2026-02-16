@@ -30,7 +30,7 @@ export const Filtros: React.FC<FiltrosProps> = ({
     showEstado = true,
     statuses = [],
 }) => (
-    <Card className="mt-8 border-slate-200 bg-white/80 p-5">
+    <Card className="border-slate-200 bg-white/80 p-5">
         <div className="grid gap-4 sm:grid-cols-4">
             {showPaciente && (
                 <div className="space-y-2">

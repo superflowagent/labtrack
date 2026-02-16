@@ -14,7 +14,8 @@ export function useInView(options?: IntersectionObserverInit) {
             return
         }
 
-        const observer = new IntersectionObserver(([entry]) => setInView(entry.isIntersecting), options || { threshold: 0.1 })
+        const parsedOptions = serializedOptions ? (JSON.parse(serializedOptions) as IntersectionObserverInit) : undefined
+        const observer = new IntersectionObserver(([entry]) => setInView(entry.isIntersecting), parsedOptions || { threshold: 0.1 })
         const el = ref.current
         if (!el) return () => observer.disconnect()
         observer.observe(el)

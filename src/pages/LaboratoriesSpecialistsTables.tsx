@@ -1,9 +1,9 @@
-import { useMemo, useState, useEffect, useRef } from 'react';
+import { useMemo, useState, useRef } from 'react';
 import { Card, CardFooter } from '@/components/ui/card';
 import { Pagination } from '@/components/ui/pagination';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import type { Laboratory, Patient, Specialist } from '@/types/domain';
-import { normalizeSearch, TABLE_ROW_HEIGHT } from '@/lib/utils';
+import { normalizeSearch } from '@/lib/utils';
 
 // Props: labs: Laboratory[]
 export function LaboratoriesTable({ labs, filter, onEdit }: { labs: Laboratory[]; filter?: string; onEdit?: (lab: Laboratory) => void }) {
@@ -33,7 +33,7 @@ export function LaboratoriesTable({ labs, filter, onEdit }: { labs: Laboratory[]
     }, [labs, sortBy, sortDir, appliedFilter]);
 
     const [page, setPage] = useState(1);
-    const [pageSize, setPageSize] = useState(10);
+    const pageSize = 50;
     const labsTableRef = useRef<HTMLTableElement | null>(null);
 
     const labsTotalPages = Math.max(1, Math.ceil(sortedLabs.length / pageSize));
@@ -44,29 +44,7 @@ export function LaboratoriesTable({ labs, filter, onEdit }: { labs: Laboratory[]
         return sortedLabs.slice(start, start + pageSize);
     }, [sortedLabs, effectivePage, pageSize]);
 
-    useEffect(() => {
-        const tableEl = labsTableRef.current;
-        if (!tableEl) return;
-        const container = tableEl.parentElement as HTMLElement | null;
-        const measure = () => {
-            const headerH = (tableEl.querySelector('thead') as HTMLElement | null)?.offsetHeight ?? 0;
-            // use fixed row height so measurement is deterministic
-            const rowH = TABLE_ROW_HEIGHT;
 
-            const containerH = container?.clientHeight ?? 0;
-            const rowsThatFit = Math.max(1, Math.floor((containerH - headerH) / rowH));
-            const capped = Math.min(rowsThatFit, 50);
-            if (capped !== pageSize) setPageSize(capped);
-        };
-        measure();
-        const ro = new ResizeObserver(measure);
-        if (container) ro.observe(container);
-        window.addEventListener('resize', measure);
-        return () => {
-            ro.disconnect();
-            window.removeEventListener('resize', measure);
-        };
-    }, [sortedLabs.length, pageSize]);
 
     const handleSort = (col: 'name' | 'phone' | 'email') => {
         if (sortBy === col) setSortDir(d => (d === 'asc' ? 'desc' : 'asc'));
@@ -78,9 +56,9 @@ export function LaboratoriesTable({ labs, filter, onEdit }: { labs: Laboratory[]
 
     return (
         <>
-            <Card className="mt-6 border-slate-200 bg-white flex flex-col flex-1 min-h-0 overflow-hidden">
+            <Card className="mt-2 border-slate-200 bg-white flex flex-col flex-1 min-h-0 overflow-hidden">
                 <div className="p-0 flex-1 min-h-0">
-                    <Table ref={labsTableRef} className="h-full">
+                    <Table ref={labsTableRef}>
                         <colgroup>
                             <col style={{ width: '40%' }} />
                             <col style={{ width: '30%' }} />
@@ -184,7 +162,7 @@ export function SpecialistsTable({ specialists, filter, onEdit }: { specialists:
     }, [specialists, sortBy, sortDir, appliedSpecFilter]);
 
     const [page, setPage] = useState(1);
-    const [pageSize, setPageSize] = useState(10);
+    const pageSize = 50;
     const specsTableRef = useRef<HTMLTableElement | null>(null);
 
     const specsTotalPages = Math.max(1, Math.ceil(sortedSpecs.length / pageSize));
@@ -195,29 +173,7 @@ export function SpecialistsTable({ specialists, filter, onEdit }: { specialists:
         return sortedSpecs.slice(start, start + pageSize);
     }, [sortedSpecs, effectivePage, pageSize]);
 
-    useEffect(() => {
-        const tableEl = specsTableRef.current;
-        if (!tableEl) return;
-        const container = tableEl.parentElement as HTMLElement | null;
-        const measure = () => {
-            const headerH = (tableEl.querySelector('thead') as HTMLElement | null)?.offsetHeight ?? 0;
-            // use fixed row height so measurement is deterministic
-            const rowH = TABLE_ROW_HEIGHT;
 
-            const containerH = container?.clientHeight ?? 0;
-            const rowsThatFit = Math.max(1, Math.floor((containerH - headerH) / rowH));
-            const capped = Math.min(rowsThatFit, 50);
-            if (capped !== pageSize) setPageSize(capped);
-        };
-        measure();
-        const ro = new ResizeObserver(measure);
-        if (container) ro.observe(container);
-        window.addEventListener('resize', measure);
-        return () => {
-            ro.disconnect();
-            window.removeEventListener('resize', measure);
-        };
-    }, [sortedSpecs.length, pageSize]);
 
     const handleSort = (col: 'name' | 'specialty') => {
         if (sortBy === col) setSortDir(d => (d === 'asc' ? 'desc' : 'asc'));
@@ -229,9 +185,9 @@ export function SpecialistsTable({ specialists, filter, onEdit }: { specialists:
 
     return (
         <>
-            <Card className="mt-6 border-slate-200 bg-white flex flex-col flex-1 min-h-0 overflow-hidden">
+            <Card className="mt-2 border-slate-200 bg-white flex flex-col flex-1 min-h-0 overflow-hidden">
                 <div className="p-0 flex-1 min-h-0">
-                    <Table ref={specsTableRef} className="h-full">
+                    <Table ref={specsTableRef}>
                         <colgroup>
                             <col style={{ width: '30%' }} />
                             <col style={{ width: '30%' }} />
@@ -334,7 +290,7 @@ export function PatientsTable({ patients, filter, onEdit }: { patients: Patient[
     }, [patients, sortBy, sortDir, appliedFilter]);
 
     const [page, setPage] = useState(1);
-    const [pageSize, setPageSize] = useState(10);
+    const pageSize = 50;
     const patientsTableRef = useRef<HTMLTableElement | null>(null);
 
     const patientsTotalPages = Math.max(1, Math.ceil(sortedPatients.length / pageSize));
@@ -345,29 +301,7 @@ export function PatientsTable({ patients, filter, onEdit }: { patients: Patient[
         return sortedPatients.slice(start, start + pageSize);
     }, [sortedPatients, effectivePage, pageSize]);
 
-    useEffect(() => {
-        const tableEl = patientsTableRef.current;
-        if (!tableEl) return;
-        const container = tableEl.parentElement as HTMLElement | null;
-        const measure = () => {
-            const headerH = (tableEl.querySelector('thead') as HTMLElement | null)?.offsetHeight ?? 0;
-            // use fixed row height so measurement is deterministic
-            const rowH = TABLE_ROW_HEIGHT;
 
-            const containerH = container?.clientHeight ?? 0;
-            const rowsThatFit = Math.max(1, Math.floor((containerH - headerH) / rowH));
-            const capped = Math.min(rowsThatFit, 50);
-            if (capped !== pageSize) setPageSize(capped);
-        };
-        measure();
-        const ro = new ResizeObserver(measure);
-        if (container) ro.observe(container);
-        window.addEventListener('resize', measure);
-        return () => {
-            ro.disconnect();
-            window.removeEventListener('resize', measure);
-        };
-    }, [sortedPatients.length, pageSize]);
 
     const handleSort = (col: 'name' | 'phone' | 'email') => {
         if (sortBy === col) setSortDir(d => (d === 'asc' ? 'desc' : 'asc'));
@@ -379,9 +313,9 @@ export function PatientsTable({ patients, filter, onEdit }: { patients: Patient[
 
     return (
         <>
-            <Card className="mt-6 border-slate-200 bg-white flex flex-col flex-1 min-h-0 overflow-hidden">
+            <Card className="mt-2 border-slate-200 bg-white flex flex-col flex-1 min-h-0 overflow-hidden">
                 <div className="p-0 flex-1 min-h-0">
-                    <Table ref={patientsTableRef} className="h-full">
+                    <Table ref={patientsTableRef}>
                         <colgroup>
                             <col style={{ width: '20%' }} />
                             <col style={{ width: '30%' }} />
@@ -428,11 +362,6 @@ export function PatientsTable({ patients, filter, onEdit }: { patients: Patient[
                                                     tabIndex={0}
                                                 >
                                                     <img src="/whatsapp.svg" alt="WhatsApp" className="w-4 h-4 pointer-events-none" />
-                                                    <path fill="#fff" d="M4.9,43.3l2.7-9.8C5.9,30.6,5,27.3,5,24C5,13.5,13.5,5,24,5c5.1,0,9.8,2,13.4,5.6 C41,14.2,43,18.9,43,24c0,10.5-8.5,19-19,19c0,0,0,0,0,0h0c-3.2,0-6.3-0.8-9.1-2.3L4.9,43.3z" />
-                                                    <path fill="#fff" d="M4.9,43.8c-0.1,0-0.3-0.1-0.4-0.1c-0.1-0.1-0.2-0.3-0.1-0.5L7,33.5c-1.6-2.9-2.5-6.2-2.5-9.6 C4.5,13.2,13.3,4.5,24,4.5c5.2,0,10.1,2,13.8,5.7c3.7,3.7,5.7,8.6,5.7,13.8c0,10.7-8.7,19.5-19.5,19.5c-3.2,0-6.3-0.8-9.1-2.3 L5,43.8C5,43.8,4.9,43.8,4.9,43.8z" />
-                                                    <path fill="#cfd8dc" d="M24,5c5.1,0,9.8,2,13.4,5.6C41,14.2,43,18.9,43,24c0,10.5-8.5,19-19,19h0c-3.2,0-6.3-0.8-9.1-2.3 L4.9,43.3l2.7-9.8C5.9,30.6,5,27.3,5,24C5,13.5,13.5,5,24,5 M24,43L24,43L24,43 M24,43L24,43L24,43 M24,4L24,4C13,4,4,13,4,24 c0,3.4,0.8,6.7,2.5,9.6L3.9,43c-0.1,0.3,0,0.7,0.3,1c0.2,0.2,0.4,0.3,0.7,0.3c0.1,0,0.2,0,0.3,0l9.7-2.5c2.8,1.5,6,2.2,9.2,2.2 c11,0,20-9,20-20c0-5.3-2.1-10.4-5.8-14.1C34.4,6.1,29.4,4,24,4L24,4z" />
-                                                    <path fill="#40c351" d="M35.2,12.8c-3-3-6.9-4.6-11.2-4.6C15.3,8.2,8.2,15.3,8.2,24c0,3,0.8,5.9,2.4,8.4L11,33l-1.6,5.8 l6-1.6l0.6,0.3c2.4,1.4,5.2,2.2,8,2.2h0c8.7,0,15.8-7.1,15.8-15.8C39.8,19.8,38.2,15.8,35.2,12.8z" />
-                                                    <path fill="#fff" fillRule="evenodd" d="M19.3,16c-0.4-0.8-0.7-0.8-1.1-0.8c-0.3,0-0.6,0-0.9,0 s-0.8,0.1-1.3,0.6c-0.4,0.5-1.7,1.6-1.7,4s1.7,4.6,1.9,4.9s3.3,5.3,8.1,7.2c4,1.6,4.8,1.3,5.7,1.2c0.9-0.1,2.8-1.1,3.2-2.3 c0.4-1.1,0.4-2.1,0.3-2.3c-0.1-0.2-0.4-0.3-0.9-0.6s-2.8-1.4-3.2-1.5c-0.4-0.2-0.8-0.2-1.1,0.2c-0.3,0.5-1.2,1.5-1.5,1.9 c-0.3,0.3-0.6,0.4-1,0.1c-0.5-0.2-2-0.7-3.8-2.4c-1.4-1.3-2.4-2.8-2.6-3.3c-0.3-0.5,0-0.7,0.2-1c0.2-0.2,0.5-0.6,0.7-0.8 c0.2-0.3,0.3-0.5,0.5-0.8c0.2-0.3,0.1-0.6,0-0.8C20.6,19.3,19.7,17,19.3,16z" clipRule="evenodd" />
                                                 </a>
                                             ) : (
                                                 <button
@@ -445,11 +374,6 @@ export function PatientsTable({ patients, filter, onEdit }: { patients: Patient[
                                                     title="Sin teléfono"
                                                 >
                                                     <img src="/whatsapp.svg" alt="WhatsApp" className="w-4 h-4 opacity-60 filter grayscale pointer-events-none" />
-                                                    <path fill="#fff" d="M4.9,43.3l2.7-9.8C5.9,30.6,5,27.3,5,24C5,13.5,13.5,5,24,5c5.1,0,9.8,2,13.4,5.6 C41,14.2,43,18.9,43,24c0,10.5-8.5,19-19,19c0,0,0,0,0,0h0c-3.2,0-6.3-0.8-9.1-2.3L4.9,43.3z" />
-                                                    <path fill="#fff" d="M4.9,43.8c-0.1,0-0.3-0.1-0.4-0.1c-0.1-0.1-0.2-0.3-0.1-0.5L7,33.5c-1.6-2.9-2.5-6.2-2.5-9.6 C4.5,13.2,13.3,4.5,24,4.5c5.2,0,10.1,2,13.8,5.7c3.7,3.7,5.7,8.6,5.7,13.8c0,10.7-8.7,19.5-19.5,19.5c-3.2,0-6.3-0.8-9.1-2.3 L5,43.8C5,43.8,4.9,43.8,4.9,43.8z" />
-                                                    <path fill="#cfd8dc" d="M24,5c5.1,0,9.8,2,13.4,5.6C41,14.2,43,18.9,43,24c0,10.5-8.5,19-19,19h0c-3.2,0-6.3-0.8-9.1-2.3 L4.9,43.3l2.7-9.8C5.9,30.6,5,27.3,5,24C5,13.5,13.5,5,24,5 M24,43L24,43L24,43 M24,43L24,43L24,43 M24,4L24,4C13,4,4,13,4,24 c0,3.4,0.8,6.7,2.5,9.6L3.9,43c-0.1,0.3,0,0.7,0.3,1c0.2,0.2,0.4,0.3,0.7,0.3c0.1,0,0.2,0,0.3,0l9.7-2.5c2.8,1.5,6,2.2,9.2,2.2 c11,0,20-9,20-20c0-5.3-2.1-10.4-5.8-14.1C34.4,6.1,29.4,4,24,4L24,4z" />
-                                                    <path fill="#40c351" d="M35.2,12.8c-3-3-6.9-4.6-11.2-4.6C15.3,8.2,8.2,15.3,8.2,24c0,3,0.8,5.9,2.4,8.4L11,33l-1.6,5.8 l6-1.6l0.6,0.3c2.4,1.4,5.2,2.2,8,2.2h0c8.7,0,15.8-7.1,15.8-15.8C39.8,19.8,38.2,15.8,35.2,12.8z" />
-                                                    <path fill="#fff" fillRule="evenodd" d="M19.3,16c-0.4-0.8-0.7-0.8-1.1-0.8c-0.3,0-0.6,0-0.9,0 s-0.8,0.1-1.3,0.6c-0.4,0.5-1.7,1.6-1.7,4s1.7,4.6,1.9,4.9s3.3,5.3,8.1,7.2c4,1.6,4.8,1.3,5.7,1.2c0.9-0.1,2.8-1.1,3.2-2.3 c0.4-1.1,0.4-2.1,0.3-2.3c-0.1-0.2-0.4-0.3-0.9-0.6s-2.8-1.4-3.2-1.5c-0.4-0.2-0.8-0.2-1.1,0.2c-0.3,0.5-1.2,1.5-1.5,1.9 c-0.3,0.3-0.6,0.4-1,0.1c-0.5-0.2-2-0.7-3.8-2.4c1.4-1.3-2.4-2.8-2.6-3.3c-0.3-0.5,0-0.7,0.2-1c0.2-0.2,0.5-0.6,0.7-0.8 c0.2-0.3,0.3-0.5,0.5-0.8c0.2-0.3,0.1-0.6,0-0.8C20.6,19.3,19.7,17,19.3,16z" clipRule="evenodd" />
                                                 </button>
                                             )}
                                         </TableCell>

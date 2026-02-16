@@ -8,6 +8,7 @@
     }
   },
   "files": [],
+  "exclude": ["supabase/functions", "supabase/migrations"],
   "references": [
     {
       "path": "./tsconfig.app.json"
