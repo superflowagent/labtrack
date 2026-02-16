@@ -37,6 +37,7 @@ import {
 } from '@/components/ui/table'
 import { useJobs } from '@/hooks/useJobs'
 import { getClinicForUser } from '@/services/supabase/clinic'
+import { supabase } from '@/services/supabase/client'
 import {
   createLaboratory,
   createPatient,
@@ -190,9 +191,75 @@ function DashboardPage() {
   const [patientQuery, setPatientQuery] = useState('')
   const [pendingPatientSelection, setPendingPatientSelection] = useState(false)
 
+  // === Onboarding: mostrar spotlight sobre "Nuevo trabajo" la primera vez que un usuario entra al dashboard ===
+  const [showNewJobOnboarding, setShowNewJobOnboarding] = useState(false)
+  const newJobButtonRef = useRef<HTMLButtonElement | null>(null)
+  const [spotRect, setSpotRect] = useState<{ top: number; left: number; width: number; height: number } | null>(null)
+
+  const markNewJobSeen = async () => {
+    try {
+      await supabase.auth.updateUser({ data: { seen_new_job_cta: true } })
+    } catch {
+      // ignore failures silently
+    }
+  }
+
   useEffect(() => {
     if (open) setPatientQuery('')
   }, [open])
+
+  useEffect(() => {
+    // comprueba metadata del usuario y decide si mostrar onboarding
+    let mounted = true
+    ;(async () => {
+      try {
+        const { data, error } = await supabase.auth.getUser()
+        if (error || !data.user) return
+        const userMetadata = (data.user.user_metadata as unknown) as Record<string, unknown> | null
+        const seen = !!(userMetadata && userMetadata['seen_new_job_cta'])
+        if (!seen && mounted) {
+          setShowNewJobOnboarding(true)
+          // calcula la posición del botón tras un pequeño delay (render)
+          setTimeout(() => {
+            const btn = newJobButtonRef.current
+            if (btn) {
+              const r = btn.getBoundingClientRect()
+              setSpotRect({ top: r.top + window.scrollY, left: r.left + window.scrollX, width: r.width, height: r.height })
+            }
+          }, 100)
+        }
+      } catch {
+        // noop
+      }
+    })()
+    return () => {
+      mounted = false
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!showNewJobOnboarding) return
+    const update = () => {
+      const btn = newJobButtonRef.current
+      if (!btn) return
+      const r = btn.getBoundingClientRect()
+      setSpotRect({ top: r.top + window.scrollY, left: r.left + window.scrollX, width: r.width, height: r.height })
+    }
+    window.addEventListener('resize', update)
+    window.addEventListener('scroll', update, true)
+    return () => {
+      window.removeEventListener('resize', update)
+      window.removeEventListener('scroll', update, true)
+    }
+  }, [showNewJobOnboarding])
+
+  useEffect(() => {
+    // si el modal de 'Nuevo trabajo' se abre, marca el onboarding como visto
+    if (open && showNewJobOnboarding) {
+      setShowNewJobOnboarding(false)
+      void markNewJobSeen()
+    }
+  }, [open, showNewJobOnboarding])
 
   const [labOpen, setLabOpen] = useState(false)
   const [editingLabId, setEditingLabId] = useState<string | null>(null)
@@ -309,7 +376,18 @@ function DashboardPage() {
 
     const measure = () => {
       const headerH = (tableEl.querySelector('thead') as HTMLElement | null)?.offsetHeight ?? 0
-      const rowH = (tableEl.querySelector('tbody tr') as HTMLElement | null)?.offsetHeight ?? 48
+      const rowsInDOM = tableEl.querySelectorAll('tbody tr').length
+      // if only 1 DOM row is rendered but there are many items, the single row may stretch to fill
+      // the container — in that case use a reasonable default row height instead of the measured one.
+      const measuredRow = (tableEl.querySelector('tbody tr') as HTMLElement | null)
+      const defaultRowH = 48
+      let rowH = measuredRow?.offsetHeight ?? defaultRowH
+      if (rowsInDOM <= 1 && filteredJobs.length > 1) {
+        rowH = defaultRowH
+      }
+      // clamp to avoid absurd values
+      rowH = Math.max(28, Math.min(rowH, 200))
+
       const containerH = container?.clientHeight ?? 0
       const rowsThatFit = Math.max(1, Math.floor((containerH - headerH) / rowH))
       const capped = Math.min(rowsThatFit, 50)
@@ -620,11 +698,16 @@ function DashboardPage() {
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
               <Button
-                className="bg-teal-600 text-white hover:bg-teal-500"
+                ref={newJobButtonRef}
+                className={`bg-teal-600 text-white hover:bg-teal-500 ${showNewJobOnboarding ? 'relative z-50 onboarding-cta' : ''}`}
                 onClick={() => {
                   setEditingJobId(null)
                   setForm(getEmptyJobForm())
                   setOrderDateInteracted(false)
+                  if (showNewJobOnboarding) {
+                    setShowNewJobOnboarding(false)
+                    void markNewJobSeen()
+                  }
                 }}
               >
                 <ClipboardPlus className="mr-2 h-4 w-4" /> Nuevo trabajo
@@ -1362,8 +1445,47 @@ function DashboardPage() {
   return (
     <div className="min-h-screen bg-slate-100">
       <div className="mx-auto w-full px-6 py-10 h-screen flex flex-col">
-        <div className="flex-1 min-h-0">{sectionContent}</div>
+        <div className="flex-1 min-h-0 flex flex-col">{sectionContent}</div>
       </div>
+
+      {showNewJobOnboarding && spotRect && (
+        <div className="fixed inset-0 z-40 pointer-events-auto" aria-hidden>
+          <div className="absolute inset-0 bg-black/55 backdrop-blur-sm"></div>
+
+          <div
+            style={{
+              position: 'absolute',
+              top: spotRect.top - 12,
+              left: spotRect.left - 12,
+              width: spotRect.width + 24,
+              height: spotRect.height + 24,
+              borderRadius: 10,
+            }}
+            className="onboarding-ring pointer-events-none"
+          />
+
+          <div
+            style={{
+              position: 'absolute',
+              top: spotRect.top + spotRect.height + 12,
+              left: Math.max(12, spotRect.left),
+            }}
+            className="pointer-events-none z-50 max-w-xs text-sm text-white bg-black/60 rounded-md px-3 py-2"
+          >
+            Prueba creando un <strong>Nuevo trabajo</strong> — haz clic en el botón.
+          </div>
+
+          <div className="absolute top-6 right-6 z-50">
+            <button
+              type="button"
+              className="text-sm text-slate-200 px-3 py-1 rounded-md bg-black/40 hover:bg-black/30"
+              onClick={() => { setShowNewJobOnboarding(false); void markNewJobSeen(); }}
+            >
+              Omitir
+            </button>
+          </div>
+        </div>
+      )}
       <Dialog
         open={patientOpen}
         onOpenChange={(value) => {
