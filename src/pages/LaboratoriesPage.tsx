@@ -91,7 +91,7 @@ export default function LaboratoriesPage() {
 
     return (
         <div className="min-h-screen bg-slate-100 p-8">
-            <h1 className="text-2xl font-semibold mb-4">Laboratorios</h1>
+            {/* Eliminado: header antiguo, usar SectionHeader en DashboardPage */}
             <div className="flex flex-wrap items-center justify-end gap-4 mb-4">
                 <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setEditingLabId(null); setForm({ name: '', phone: '', email: '' }); } }}>
                     <DialogTrigger asChild>
@@ -248,7 +248,7 @@ export function SpecialistsPage() {
 
     return (
         <div className="min-h-screen bg-slate-100 p-8">
-            <h1 className="text-2xl font-semibold mb-4">Especialistas</h1>
+            {/* Eliminado: header antiguo, usar SectionHeader en DashboardPage */}
             <div className="flex flex-wrap items-center justify-end gap-4 mb-4">
                 <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setEditingSpecId(null); setForm({ name: '', specialty: '', phone: '', email: '' }); } }}>
                     <DialogTrigger asChild>

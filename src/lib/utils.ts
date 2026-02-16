@@ -13,7 +13,7 @@ export function cn(...inputs: ClassValue[]) {
  * - lowercase
  * - normalize common dash characters to ASCII hyphen-minus
  */
-export const TABLE_ROW_HEIGHT = 48
+export const TABLE_ROW_HEIGHT = 44
 
 export function normalizeSearch(s?: string | null) {
   if (!s) return ''

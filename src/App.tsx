@@ -4,6 +4,7 @@ import { LandingPage } from '@/pages/LandingPage'
 import { LoginPage } from '@/pages/LoginPage'
 import OgPreview from '@/pages/OgPreview'
 import DashboardPage from '@/pages/DashboardPage'
+import ClinicSettings from '@/pages/ClinicSettings'
 import { Sidebar } from '@/components/Sidebar'
 // removed unused import (LaboratoriesPage / SpecialistsPage are routed from DashboardPage now)
 
@@ -28,6 +29,7 @@ const App = () => {
         <Route index element={<DashboardPage />} />
         {/* Las rutas de laboratorios y especialistas se eliminan, ahora están en DashboardPage */}
         <Route path="patients" element={<div className="p-8 text-2xl font-semibold text-slate-700">Pacientes (próximamente)</div>} />
+        <Route path="patients/ajustes" element={<ClinicSettings />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

@@ -1,9 +1,10 @@
 import { format, formatDistanceToNow, parseISO, differenceInCalendarDays } from 'date-fns'
 import { es } from 'date-fns/locale'
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { normalizeSearch, TABLE_ROW_HEIGHT } from '@/lib/utils'
+import { useDeferredValue, useEffect, useMemo, useRef, useState, startTransition, type ReactNode } from 'react'
+import { normalizeSearch } from '@/lib/utils'
 import { Calendar as CalendarIcon, ClipboardPlus, FlaskConical, Stethoscope, UserRound, Clock, CalendarCheck, Archive } from 'lucide-react'
 import { Filtros } from '@/components/Filtros'
+import { SectionHeader } from '@/components/SectionHeader'
 import { Button } from '@/components/ui/button'
 import { Calendar } from '@/components/ui/calendar'
 import { Card, CardFooter } from '@/components/ui/card'
@@ -14,7 +15,6 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -91,6 +91,8 @@ const getStatusIcon = (status: string) => {
   }
 }
 
+const capitalizeFirst = (s?: string) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s)
+
 type JobForm = {
   patient_id: string
   job_description: string
@@ -119,11 +121,37 @@ function DashboardPage() {
   const [section, setSection] = useState<'trabajos' | 'laboratorios' | 'especialistas' | 'pacientes'>('trabajos')
   const { jobs, labs, specialists, patients, loading, error, addJob, reload } = useJobs()
 
+  const patientsById = useMemo(() => {
+    const m: Record<string, typeof patients[number]> = {}
+    patients.forEach((p) => { if (p?.id) m[p.id] = p })
+    return m
+  }, [patients])
+
+  const labsById = useMemo(() => {
+    const m: Record<string, typeof labs[number]> = {}
+    labs.forEach((l) => { if (l?.id) m[l.id] = l })
+    return m
+  }, [labs])
+
+  const specsById = useMemo(() => {
+    const m: Record<string, typeof specialists[number]> = {}
+    specialists.forEach((s) => { if (s?.id) m[s.id] = s })
+    return m
+  }, [specialists])
+
+  const sectionTitle =
+    section === 'trabajos' ? 'Trabajos' :
+      section === 'laboratorios' ? 'Laboratorios' :
+        section === 'especialistas' ? 'Especialistas' :
+          'Pacientes'
+
+
+
   // Reusable renderer for patient preview (keeps spacing consistent between trigger & list)
   // - `inset` adds left padding useful for dropdown items
   // - compact (default) reduces gap/min-width for the trigger so code and name sit closer
   const PatientPreview = ({ patientId, placeholder = 'Seleccionar paciente', inset = false }: { patientId?: string; placeholder?: string; inset?: boolean }) => {
-    const p = patients.find((x) => x.id === patientId)
+    const p = patientId ? patientsById[patientId] : undefined
     const gapClass = inset ? 'gap-2' : 'gap-1'
     // use a fixed width in the dropdown list so the name always starts at the same position
     // ensure long codes are truncated (no overlap) and show full code on hover
@@ -143,13 +171,28 @@ function DashboardPage() {
   }
 
   useEffect(() => {
-    window.setDashboardSection = setSection
+    const setter = (s: 'trabajos' | 'laboratorios' | 'especialistas' | 'pacientes') => startTransition(() => setSection(s))
+    window.setDashboardSection = setter
     return () => {
-      if (window.setDashboardSection === setSection) {
+      if (window.setDashboardSection === setter) {
         window.setDashboardSection = undefined
       }
     }
   }, [setSection])
+
+  useEffect(() => {
+    const goToSettings = () => { window.location.href = '/dashboard/patients/ajustes' }
+    window.addEventListener('navigateToSettings', goToSettings)
+    return () => window.removeEventListener('navigateToSettings', goToSettings)
+  }, [])
+
+  useEffect(() => {
+    // keep the global dashboardSection in sync and notify listeners
+    window.dashboardSection = section
+    window.dispatchEvent(new Event('dashboardSectionChanged'))
+  }, [section])
+
+  const [billingModalOpen, setBillingModalOpen] = useState(false)
 
   useEffect(() => {
     getClinicForUser()
@@ -158,6 +201,10 @@ function DashboardPage() {
           window.clinicName = clinic.name
           window.dispatchEvent(new Event('clinicNameChanged'))
         }
+        const now = new Date()
+        const trialEnd = clinic?.stripe_trial_end ? new Date(clinic.stripe_trial_end) : null
+        const isActive = clinic?.subscription_status === 'active' || clinic?.subscription_status === 'trialing' || (trialEnd && trialEnd > now)
+        setBillingModalOpen(!isActive)
       })
       .catch(() => {
         // ignore
@@ -208,6 +255,23 @@ function DashboardPage() {
     if (open) setPatientQuery('')
   }, [open])
 
+  // Billing modal (block usage if subscription expired)
+  const BillingModal = () => (
+    <Dialog open={billingModalOpen} onOpenChange={setBillingModalOpen}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Suscripción requerida</DialogTitle>
+          <DialogDescription>
+            Necesitas una suscripción activa para seguir usando Labtrack. Por favor, entra en <strong>Ajustes</strong> para iniciar o reactivar tu suscripción.
+          </DialogDescription>
+          <div className="mt-4 flex gap-2">
+            <Button variant="secondary" onClick={() => window.dispatchEvent(new CustomEvent('navigateToSettings'))}>Ir a Ajustes</Button>
+          </div>
+        </DialogHeader>
+      </DialogContent>
+    </Dialog>
+  )
+
   useEffect(() => {
     // comprueba metadata del usuario y decide si mostrar onboarding
     let mounted = true
@@ -246,7 +310,9 @@ function DashboardPage() {
       setSpotRect({ top: r.top + window.scrollY, left: r.left + window.scrollX, width: r.width, height: r.height })
     }
 
-    // Cierra el onboarding si el usuario hace click en cualquier parte de la ventana
+    // Cierra el onboarding si el usuario interactúa en cualquier parte de la ventana
+    // registramos varios tipos de evento (pointerdown, touchstart, click) para cubrir
+    // desktop, touch y casos donde `click` podría no dispararse.
     const handleAnyClick = () => {
       setShowNewJobOnboarding(false)
       void markNewJobSeen()
@@ -254,10 +320,14 @@ function DashboardPage() {
 
     window.addEventListener('resize', update)
     window.addEventListener('scroll', update, true)
+    window.addEventListener('pointerdown', handleAnyClick, true)
+    window.addEventListener('touchstart', handleAnyClick, true)
     window.addEventListener('click', handleAnyClick, true)
     return () => {
       window.removeEventListener('resize', update)
       window.removeEventListener('scroll', update, true)
+      window.removeEventListener('pointerdown', handleAnyClick, true)
+      window.removeEventListener('touchstart', handleAnyClick, true)
       window.removeEventListener('click', handleAnyClick, true)
     }
   }, [showNewJobOnboarding])
@@ -302,20 +372,47 @@ function DashboardPage() {
     return count
   }, [filters])
 
+  const deferredTrabajo = useDeferredValue(filters.trabajo)
+  const normalizedTrabajoQuery = useMemo(() => normalizeSearch(deferredTrabajo), [deferredTrabajo])
+  const now = useMemo(() => new Date(), [])
+  const formatter = useMemo(
+    () => new Intl.DateTimeFormat('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }),
+    [],
+  )
+
+  const jobsMeta = useMemo(() => {
+    if (section !== 'trabajos') return []
+    return jobs.map((job) => {
+      const patient = job.patient_id ? patientsById[job.patient_id] : undefined
+      const labName = job.laboratory_id ? (labsById[job.laboratory_id]?.name || '') : ''
+      const specName = job.specialist_id ? (specsById[job.specialist_id]?.name || '') : ''
+      const jobDesc = job.job_description || ''
+      const patientName = patient?.name || ''
+      const patientCode = patient?.code || ''
+      const patientPhone = patient?.phone || ''
+      const waUrl = patientPhone
+        ? `https://wa.me/${patientPhone}?text=${encodeURIComponent(`Hola ${patientName},\nYa tenemos el trabajo (${jobDesc}) disponible en clínica.\nPor favor, contáctanos para agendar una cita.\n¡Gracias!`)}`
+        : ''
+      const searchText = normalizeSearch([jobDesc, patientName, patientCode].filter(Boolean).join(' '))
+
+      return {
+        job,
+        labName,
+        specName,
+        patientName,
+        patientCode,
+        patientPhone,
+        waUrl,
+        searchText,
+      }
+    })
+  }, [jobs, labsById, specsById, patientsById, section])
+
   const jobsForElapsed = useMemo(() => {
-    return jobs.filter((job) => {
-      const patient = patients.find((p) => p.id === job.patient_id)
-      const q = normalizeSearch(filters.trabajo)
-
-      // combined search: job_description OR patient name/code
-      const matchQuery = q
-        ? (
-          normalizeSearch(job.job_description ?? '').includes(q) ||
-          normalizeSearch(patient?.name).includes(q) ||
-          normalizeSearch(patient?.code).includes(q)
-        )
-        : true
-
+    if (section !== 'trabajos') return []
+    return jobsMeta.filter(({ job, searchText }) => {
+      const q = normalizedTrabajoQuery
+      const matchQuery = q ? searchText.includes(q) : true
       const matchLab = filters.laboratorioId !== 'all' ? job.laboratory_id === filters.laboratorioId : true
       // Mostrar por defecto TODOS los estados excepto 'Cerrado'.
       // Si el usuario selecciona explícitamente un estado (p. ej. 'Cerrado'), mostrar solo ese estado.
@@ -323,39 +420,38 @@ function DashboardPage() {
 
       return matchQuery && matchLab && matchEstado
     })
-  }, [jobs, filters, patients])
+  }, [jobsMeta, normalizedTrabajoQuery, filters.laboratorioId, filters.estado, section])
 
   const filteredJobs = useMemo(() => {
-    let filtered = jobsForElapsed.filter((job) => {
-      const matchDays = typeof filters.maxDaysElapsed === 'number' && filters.maxDaysElapsed > 0
-        ? (job.order_date ? differenceInCalendarDays(new Date(), parseISO(job.order_date)) >= filters.maxDaysElapsed : false)
-        : true
+    if (section !== 'trabajos') return []
+    let filtered = jobsForElapsed.filter(({ job }) => {
+      if (typeof filters.maxDaysElapsed === 'number' && filters.maxDaysElapsed > 0) {
+        if (!job.order_date) return false
+        const elapsedDays = differenceInCalendarDays(now, parseISO(job.order_date))
+        return elapsedDays >= filters.maxDaysElapsed
+      }
 
-      return matchDays
+      return true
     })
 
-    const getLabName = (id: string | null) => labs.find((lab) => lab.id === id)?.name || ''
-    const getSpecName = (id: string | null) => specialists.find((spec) => spec.id === id)?.name || ''
-
     filtered = filtered.slice().sort((a, b) => {
-      const getPatientName = (id: string | null) => patients.find((p) => p.id === id)?.name || ''
       const compare = (x: string, y: string) => x.localeCompare(y)
       let cmp = 0
       switch (filters.sortBy) {
         case 'paciente':
-          cmp = compare(getPatientName(a.patient_id), getPatientName(b.patient_id))
+          cmp = compare(a.patientName, b.patientName)
           break
         case 'trabajo':
-          cmp = compare(a.job_description || '', b.job_description || '')
+          cmp = compare(a.job.job_description || '', b.job.job_description || '')
           break
         case 'laboratorio':
-          cmp = compare(getLabName(a.laboratory_id), getLabName(b.laboratory_id))
+          cmp = compare(a.labName, b.labName)
           break
         case 'especialista':
-          cmp = compare(getSpecName(a.specialist_id), getSpecName(b.specialist_id))
+          cmp = compare(a.specName, b.specName)
           break
         case 'estado':
-          cmp = compare(a.status, b.status)
+          cmp = compare(a.job.status, b.job.status)
           break
         default:
           cmp = 0
@@ -364,57 +460,48 @@ function DashboardPage() {
     })
 
     return filtered
-  }, [filters, jobsForElapsed, labs, specialists, patients])
+  }, [filters.maxDaysElapsed, filters.sortBy, filters.sortDir, jobsForElapsed, now, section])
 
   const [jobsPage, setJobsPage] = useState(1)
-  const [jobsPageSize, setJobsPageSize] = useState(10)
+  // fixed page size per your request (max 50)
+  const jobsPageSize = 50
   const jobsTableRef = useRef<HTMLTableElement | null>(null)
 
   const jobsTotalPages = Math.max(1, Math.ceil(filteredJobs.length / jobsPageSize))
   const jobsEffectivePage = Math.min(jobsPage, jobsTotalPages)
 
   const paginatedJobs = useMemo(() => {
+    if (section !== 'trabajos') return []
     const start = (jobsEffectivePage - 1) * jobsPageSize
     return filteredJobs.slice(start, start + jobsPageSize)
-  }, [filteredJobs, jobsEffectivePage, jobsPageSize])
-
-  useEffect(() => {
-    const tableEl = jobsTableRef.current
-    if (!tableEl) return
-    const container = tableEl.parentElement as HTMLElement | null
-
-    const measure = () => {
-      const headerH = (tableEl.querySelector('thead') as HTMLElement | null)?.offsetHeight ?? 0
-      // fixed row height (CSS + JS constant must match)
-      const rowH = TABLE_ROW_HEIGHT
-
-      const containerH = container?.clientHeight ?? 0
-      const rowsThatFit = Math.max(1, Math.floor((containerH - headerH) / rowH))
-      const capped = Math.min(rowsThatFit, 50)
-      if (capped !== jobsPageSize) setJobsPageSize(capped)
-    }
-
-    measure()
-    const ro = new ResizeObserver(measure)
-    if (container) ro.observe(container)
-    window.addEventListener('resize', measure)
-    return () => {
-      ro.disconnect()
-      window.removeEventListener('resize', measure)
-    }
-  }, [filteredJobs.length, jobsPageSize])
-
-  const capitalizeFirst = (s?: string) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s)
+  }, [filteredJobs, jobsEffectivePage, jobsPageSize, section])
 
   const maxElapsedDays = useMemo(() => {
+    if (section !== 'trabajos') return 0
     const values = jobsForElapsed
-      .map((j) => (j.order_date ? differenceInCalendarDays(new Date(), parseISO(j.order_date)) : -1))
+      .map(({ job }) => (job.order_date ? differenceInCalendarDays(now, parseISO(job.order_date)) : -1))
       .filter((d) => d >= 0)
     return values.length ? Math.max(...values) : 0
-  }, [jobsForElapsed])
+  }, [jobsForElapsed, now, section])
+
+  const visibleJobs = useMemo(() => {
+    if (section !== 'trabajos') return []
+    return paginatedJobs.map((meta) => {
+      const orderDate = meta.job.order_date ? parseISO(meta.job.order_date) : null
+      const orderDateText = orderDate ? formatter.format(orderDate) : '-'
+      const elapsedText = orderDate
+        ? capitalizeFirst(formatDistanceToNow(orderDate, { locale: es, addSuffix: true }).replace(/\balrededor(?: de)?\s*/i, ''))
+        : '-'
+      return {
+        ...meta,
+        orderDateText,
+        elapsedText,
+      }
+    })
+  }, [paginatedJobs, formatter, section])
 
   const sliderMax = maxElapsedDays > 0 ? maxElapsedDays : 365
-  const isElapsedDisabled = jobsForElapsed.length === 0
+  const isElapsedDisabled = section !== 'trabajos' || jobsForElapsed.length === 0
 
   // if available max shrinks, clamp the current filter value so the slider/value stay consistent
   useEffect(() => {
@@ -422,6 +509,12 @@ function DashboardPage() {
       setFilters((prev) => ({ ...prev, maxDaysElapsed: maxElapsedDays }))
     }
   }, [filters.maxDaysElapsed, maxElapsedDays])
+
+  const filteredPatients = useMemo(() => {
+    const query = patientQuery.trim().toLowerCase()
+    if (!query) return patients
+    return patients.filter((p) => p.name.toLowerCase().includes(query))
+  }, [patientQuery, patients])
 
   const handleSaveJob = async () => {
     setSaving(true)
@@ -696,23 +789,6 @@ function DashboardPage() {
       <>
         <div className="flex flex-wrap items-center justify-end gap-4 mb-4">
           <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild>
-              <Button
-                ref={newJobButtonRef}
-                className={`bg-teal-600 text-white hover:bg-teal-500 ${showNewJobOnboarding ? 'relative z-50 onboarding-cta' : ''}`}
-                onClick={() => {
-                  setEditingJobId(null)
-                  setForm(getEmptyJobForm())
-                  setOrderDateInteracted(false)
-                  if (showNewJobOnboarding) {
-                    setShowNewJobOnboarding(false)
-                    void markNewJobSeen()
-                  }
-                }}
-              >
-                <ClipboardPlus className="mr-2 h-4 w-4" /> Nuevo trabajo
-              </Button>
-            </DialogTrigger>
             <DialogContent className="sm:max-w-lg">
               <DialogHeader>
                 <DialogTitle>{editingJobId ? 'Editar trabajo' : 'Nuevo trabajo'}</DialogTitle>
@@ -746,14 +822,12 @@ function DashboardPage() {
                             className="mb-2"
                           />
                         </div>
-                        {patients
-                          .filter((p) => p.name.toLowerCase().includes(patientQuery.toLowerCase()))
-                          .map((p) => (
-                            <SelectItem key={p.id} value={p.id}>
-                              <PatientPreview patientId={p.id} inset />
-                            </SelectItem>
-                          ))}
-                        {patients.filter((p) => p.name.toLowerCase().includes(patientQuery.toLowerCase())).length === 0 && (
+                        {filteredPatients.map((p) => (
+                          <SelectItem key={p.id} value={p.id}>
+                            <PatientPreview patientId={p.id} inset />
+                          </SelectItem>
+                        ))}
+                        {filteredPatients.length === 0 && (
                           <div className="p-3 text-sm text-slate-500">No hay resultados</div>
                         )}
                       </SelectContent>
@@ -893,7 +967,8 @@ function DashboardPage() {
             </DialogContent>
           </Dialog>
         </div>
-        <Card className="mt-8 border-slate-200 bg-white/80 p-5">
+
+        <Card className="border-slate-200 bg-white/80 p-5 mb-6">
           <div className="grid gap-4 sm:grid-cols-4">
             <div className="space-y-2">
               <Label>Buscar</Label>
@@ -976,14 +1051,15 @@ function DashboardPage() {
                 <span className="ml-2 inline-flex items-center rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700">
                   {activeFiltersCount}
                 </span>
-              )}
-            </Button>
-          </div>
-        </Card>
-        <Card className="mt-6 border-slate-200 bg-white flex flex-col flex-1 min-h-0 overflow-hidden">
-          <div className="p-0 flex-1 min-h-0">
-            <Table ref={jobsTableRef} className="h-full">
-              <colgroup>
+              <>
+                <div className="mb-4" />
+                <Filtros
+                  filters={patientsFilters}
+                  setFilters={setPatientsFilters}
+                  showPaciente={true}
+                  showLaboratorio={false}
+                  showEstado={false}
+                />
                 <col style={{ width: '20%' }} />
                 <col style={{ width: '20%' }} />
                 <col style={{ width: '15%' }} />
@@ -1067,7 +1143,8 @@ function DashboardPage() {
                 )}
                 {!loading &&
                   !error &&
-                  paginatedJobs.map((job) => {
+                  visibleJobs.map((meta) => {
+                    const job = meta.job
                     return (
                       <TableRow
                         key={job.id}
@@ -1088,60 +1165,51 @@ function DashboardPage() {
                       >
                         <TableCell className="font-medium pl-6">
                           <div className="flex items-center gap-3">
-                            <span className="w-10 text-right text-xs text-slate-500">{patients.find((p) => p.id === job.patient_id)?.code || '-'}</span>
-                            <span>{patients.find((p) => p.id === job.patient_id)?.name || '-'}</span>
-                            {(() => {
-                              const patient = patients.find((p) => p.id === job.patient_id);
-                              if (!patient) return null;
-                              const phone = patient.phone;
-                              const name = patient.name || '';
-                              const jobDesc = job.job_description || '';
-                              const msg = encodeURIComponent(`Hola ${name},\nYa tenemos el trabajo (${jobDesc}) disponible en clínica.\nPor favor, contáctanos para agendar una cita.\n¡Gracias!`);
-                              const waUrl = phone ? `https://wa.me/${phone}?text=${msg}` : undefined;
-                              return phone ? (
-                                <a
-                                  href={waUrl}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="ml-2 inline-flex items-center justify-center w-6 h-6 rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-700 shadow-sm transition-transform transform hover:scale-105"
-                                  title="Enviar WhatsApp"
-                                  tabIndex={0}
-                                  onClick={(e) => e.stopPropagation()}
-                                  onKeyDown={(e) => e.stopPropagation()}
-                                >
-                                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="20" height="20" className="transition-opacity opacity-80 group-hover:opacity-100">
-                                    <path fill="#fff" d="M4.9,43.3l2.7-9.8C5.9,30.6,5,27.3,5,24C5,13.5,13.5,5,24,5c5.1,0,9.8,2,13.4,5.6 C41,14.2,43,18.9,43,24c0,10.5-8.5,19-19,19c0,0,0,0,0,0h0c-3.2,0-6.3-0.8-9.1-2.3L4.9,43.3z" />
-                                    <path fill="#fff" d="M4.9,43.8c-0.1,0-0.3-0.1-0.4-0.1c-0.1-0.1-0.2-0.3-0.1-0.5L7,33.5c-1.6-2.9-2.5-6.2-2.5-9.6 C4.5,13.2,13.3,4.5,24,4.5c5.2,0,10.1,2,13.8,5.7c3.7,3.7,5.7,8.6,5.7,13.8c0,10.7-8.7,19.5-19.5,19.5c-3.2,0-6.3-0.8-9.1-2.3 L5,43.8C5,43.8,4.9,43.8,4.9,43.8z" />
-                                    <path fill="#cfd8dc" d="M24,5c5.1,0,9.8,2,13.4,5.6C41,14.2,43,18.9,43,24c0,10.5-8.5,19-19,19h0c-3.2,0-6.3-0.8-9.1-2.3 L4.9,43.3l2.7-9.8C5.9,30.6,5,27.3,5,24C5,13.5,13.5,5,24,5 M24,43L24,43L24,43 M24,43L24,43L24,43 M24,4L24,4C13,4,4,13,4,24 c0,3.4,0.8,6.7,2.5,9.6L3.9,43c-0.1,0.3,0,0.7,0.3,1c0.2,0.2,0.4,0.3,0.7,0.3c0.1,0,0.2,0,0.3,0l9.7-2.5c2.8,1.5,6,2.2,9.2,2.2 c11,0,20-9,20-20c0-5.3-2.1-10.4-5.8-14.1C34.4,6.1,29.4,4,24,4L24,4z" />
-                                    <path fill="#40c351" d="M35.2,12.8c-3-3-6.9-4.6-11.2-4.6C15.3,8.2,8.2,15.3,8.2,24c0,3,0.8,5.9,2.4,8.4L11,33l-1.6,5.8 l6-1.6l0.6,0.3c2.4,1.4,5.2,2.2,8,2.2h0c8.7,0,15.8-7.1,15.8-15.8C39.8,19.8,38.2,15.8,35.2,12.8z" />
-                                    <path fill="#fff" fillRule="evenodd" d="M19.3,16c-0.4-0.8-0.7-0.8-1.1-0.8c-0.3,0-0.6,0-0.9,0 s-0.8,0.1-1.3,0.6c-0.4,0.5-1.7,1.6-1.7,4s1.7,4.6,1.9,4.9s3.3,5.3,8.1,7.2c4,1.6,4.8,1.3,5.7,1.2c0.9-0.1,2.8-1.1,3.2-2.3 c0.4-1.1,0.4-2.1,0.3-2.3c-0.1-0.2-0.4-0.3-0.9-0.6s-2.8-1.4-3.2-1.5c-0.4-0.2-0.8-0.2-1.1,0.2c-0.3,0.5-1.2,1.5-1.5,1.9 c-0.3,0.3-0.6,0.4-1,0.1c-0.5-0.2-2-0.7-3.8-2.4c-1.4-1.3-2.4-2.8-2.6-3.3c-0.3-0.5,0-0.7,0.2-1c0.2-0.2,0.5-0.6,0.7-0.8 c0.2-0.3,0.3-0.5,0.5-0.8c0.2-0.3,0.1-0.6,0-0.8C20.6,19.3,19.7,17,19.3,16z" clipRule="evenodd" />
-                                  </svg>
-                                </a>
-                              ) : (
-                                <button
-                                  type="button"
-                                  aria-disabled="true"
-                                  tabIndex={-1}
-                                  onClick={(e) => e.stopPropagation()}
-                                  onKeyDown={(e) => e.stopPropagation()}
-                                  className="ml-2 inline-flex items-center justify-center w-6 h-6 rounded-md bg-transparent border border-slate-100 text-slate-300 cursor-not-allowed opacity-60 filter grayscale"
-                                  title="Sin teléfono"
-                                >
-                                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="20" height="20">
-                                    <path fill="#fff" d="M4.9,43.3l2.7-9.8C5.9,30.6,5,27.3,5,24C5,13.5,13.5,5,24,5c5.1,0,9.8,2,13.4,5.6 C41,14.2,43,18.9,43,24c0,10.5-8.5,19-19,19c0,0,0,0,0,0h0c-3.2,0-6.3-0.8-9.1-2.3L4.9,43.3z" />
-                                    <path fill="#fff" d="M4.9,43.8c-0.1,0-0.3-0.1-0.4-0.1c-0.1-0.1-0.2-0.3-0.1-0.5L7,33.5c-1.6-2.9-2.5-6.2-2.5-9.6 C4.5,13.2,13.3,4.5,24,4.5c5.2,0,10.1,2,13.8,5.7c3.7,3.7,5.7,8.6,5.7,13.8c0,10.7-8.7,19.5-19.5,19.5c-3.2,0-6.3-0.8-9.1-2.3 L5,43.8C5,43.8,4.9,43.8,4.9,43.8z" />
-                                    <path fill="#cfd8dc" d="M24,5c5.1,0,9.8,2,13.4,5.6C41,14.2,43,18.9,43,24c0,10.5-8.5,19-19,19h0c-3.2,0-6.3-0.8-9.1-2.3 L4.9,43.3l2.7-9.8C5.9,30.6,5,27.3,5,24C5,13.5,13.5,5,24,5 M24,43L24,43L24,43 M24,43L24,43L24,43 M24,4L24,4C13,4,4,13,4,24 c0,3.4,0.8,6.7,2.5,9.6L3.9,43c-0.1,0.3,0,0.7,0.3,1c0.2,0.2,0.4,0.3,0.7,0.3c0.1,0,0.2,0,0.3,0l9.7-2.5c2.8,1.5,6,2.2,9.2,2.2 c11,0,20-9,20-20c0-5.3-2.1-10.4-5.8-14.1C34.4,6.1,29.4,4,24,4L24,4z" />
-                                    <path fill="#40c351" d="M35.2,12.8c-3-3-6.9-4.6-11.2-4.6C15.3,8.2,8.2,15.3,8.2,24c0,3,0.8,5.9,2.4,8.4L11,33l-1.6,5.8 l6-1.6l0.6,0.3c2.4,1.4,5.2,2.2,8,2.2h0c8.7,0,15.8-7.1,15.8-15.8C39.8,19.8,38.2,15.8,35.2,12.8z" />
-                                    <path fill="#fff" fillRule="evenodd" d="M19.3,16c-0.4-0.8-0.7-0.8-1.1-0.8c-0.3,0-0.6,0-0.9,0 s-0.8,0.1-1.3,0.6c-0.4,0.5-1.7,1.6-1.7,4s1.7,4.6,1.9,4.9s3.3,5.3,8.1,7.2c4,1.6,4.8,1.3,5.7,1.2c0.9-0.1,2.8-1.1,3.2-2.3 c0.4-1.1,0.4-2.1,0.3-2.3c-0.1-0.2-0.4-0.3-0.9-0.6s-2.8-1.4-3.2-1.5c-0.4-0.2-0.8-0.2-1.1,0.2c-0.3,0.5-1.2,1.5-1.5,1.9 c-0.3,0.3-0.6,0.4-1,0.1c-0.5-0.2-2-0.7-3.8-2.4c-1.4-1.3-2.4-2.8-2.6-3.3c-0.3-0.5,0-0.7,0.2-1c0.2-0.2,0.5-0.6,0.7-0.8 c0.2-0.3,0.3-0.5,0.5-0.8c0.2-0.3,0.1-0.6,0-0.8C20.6,19.3,19.7,17,19.3,16z" clipRule="evenodd" />
-                                  </svg>
-                                </button>
-                              );
-                            })()}
+                            <span className="w-10 text-right text-xs text-slate-500">{meta.patientCode || '-'}</span>
+                            <span>{meta.patientName || '-'}</span>
+                            {meta.patientPhone ? (
+                              <a
+                                href={meta.waUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="ml-2 inline-flex items-center justify-center w-6 h-6 rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-700 shadow-sm transition-transform transform hover:scale-105"
+                                title="Enviar WhatsApp"
+                                tabIndex={0}
+                                onClick={(e) => e.stopPropagation()}
+                                onKeyDown={(e) => e.stopPropagation()}
+                              >
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="20" height="20" className="transition-opacity opacity-80 group-hover:opacity-100">
+                                  <path fill="#fff" d="M4.9,43.3l2.7-9.8C5.9,30.6,5,27.3,5,24C5,13.5,13.5,5,24,5c5.1,0,9.8,2,13.4,5.6 C41,14.2,43,18.9,43,24c0,10.5-8.5,19-19,19c0,0,0,0,0,0h0c-3.2,0-6.3-0.8-9.1-2.3L4.9,43.3z" />
+                                  <path fill="#fff" d="M4.9,43.8c-0.1,0-0.3-0.1-0.4-0.1c-0.1-0.1-0.2-0.3-0.1-0.5L7,33.5c-1.6-2.9-2.5-6.2-2.5-9.6 C4.5,13.2,13.3,4.5,24,4.5c5.2,0,10.1,2,13.8,5.7c3.7,3.7,5.7,8.6,5.7,13.8c0,10.7-8.7,19.5-19.5,19.5c-3.2,0-6.3-0.8-9.1-2.3 L5,43.8C5,43.8,4.9,43.8,4.9,43.8z" />
+                                  <path fill="#cfd8dc" d="M24,5c5.1,0,9.8,2,13.4,5.6C41,14.2,43,18.9,43,24c0,10.5-8.5,19-19,19h0c-3.2,0-6.3-0.8-9.1-2.3 L4.9,43.3l2.7-9.8C5.9,30.6,5,27.3,5,24C5,13.5,13.5,5,24,5 M24,43L24,43L24,43 M24,43L24,43L24,43 M24,4L24,4C13,4,4,13,4,24 c0,3.4,0.8,6.7,2.5,9.6L3.9,43c-0.1,0.3,0,0.7,0.3,1c0.2,0.2,0.4,0.3,0.7,0.3c0.1,0,0.2,0,0.3,0l9.7-2.5c2.8,1.5,6,2.2,9.2,2.2 c11,0,20-9,20-20c0-5.3-2.1-10.4-5.8-14.1C34.4,6.1,29.4,4,24,4L24,4z" />
+                                  <path fill="#40c351" d="M35.2,12.8c-3-3-6.9-4.6-11.2-4.6C15.3,8.2,8.2,15.3,8.2,24c0,3,0.8,5.9,2.4,8.4L11,33l-1.6,5.8 l6-1.6l0.6,0.3c2.4,1.4,5.2,2.2,8,2.2h0c8.7,0,15.8-7.1,15.8-15.8C39.8,19.8,38.2,15.8,35.2,12.8z" />
+                                  <path fill="#fff" fillRule="evenodd" d="M19.3,16c-0.4-0.8-0.7-0.8-1.1-0.8c-0.3,0-0.6,0-0.9,0 s-0.8,0.1-1.3,0.6c-0.4,0.5-1.7,1.6-1.7,4s1.7,4.6,1.9,4.9s3.3,5.3,8.1,7.2c4,1.6,4.8,1.3,5.7,1.2c0.9-0.1,2.8-1.1,3.2-2.3 c0.4-1.1,0.4-2.1,0.3-2.3c-0.1-0.2-0.4-0.3-0.9-0.6s-2.8-1.4-3.2-1.5c-0.4-0.2-0.8-0.2-1.1,0.2c-0.3,0.5-1.2,1.5-1.5,1.9 c-0.3,0.3-0.6,0.4-1,0.1c-0.5-0.2-2-0.7-3.8-2.4c-1.4-1.3-2.4-2.8-2.6-3.3c-0.3-0.5,0-0.7,0.2-1c0.2-0.2,0.5-0.6,0.7-0.8 c0.2-0.3,0.3-0.5,0.5-0.8c0.2-0.3,0.1-0.6,0-0.8C20.6,19.3,19.7,17,19.3,16z" clipRule="evenodd" />
+                                </svg>
+                              </a>
+                            ) : (
+                              <button
+                                type="button"
+                                aria-disabled="true"
+                                tabIndex={-1}
+                                onClick={(e) => e.stopPropagation()}
+                                onKeyDown={(e) => e.stopPropagation()}
+                                className="ml-2 inline-flex items-center justify-center w-6 h-6 rounded-md bg-transparent border border-slate-100 text-slate-300 cursor-not-allowed opacity-60 filter grayscale"
+                                title="Sin teléfono"
+                              >
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="20" height="20">
+                                  <path fill="#fff" d="M4.9,43.3l2.7-9.8C5.9,30.6,5,27.3,5,24C5,13.5,13.5,5,24,5c5.1,0,9.8,2,13.4,5.6 C41,14.2,43,18.9,43,24c0,10.5-8.5,19-19,19c0,0,0,0,0,0h0c-3.2,0-6.3-0.8-9.1-2.3L4.9,43.3z" />
+                                  <path fill="#fff" d="M4.9,43.8c-0.1,0-0.3-0.1-0.4-0.1c-0.1-0.1-0.2-0.3-0.1-0.5L7,33.5c-1.6-2.9-2.5-6.2-2.5-9.6 C4.5,13.2,13.3,4.5,24,4.5c5.2,0,10.1,2,13.8,5.7c3.7,3.7,5.7,8.6,5.7,13.8c0,10.7-8.7,19.5-19.5,19.5c-3.2,0-6.3-0.8-9.1-2.3 L5,43.8C5,43.8,4.9,43.8,4.9,43.8z" />
+                                  <path fill="#cfd8dc" d="M24,5c5.1,0,9.8,2,13.4,5.6C41,14.2,43,18.9,43,24c0,10.5-8.5,19-19,19h0c-3.2,0-6.3-0.8-9.1-2.3 L4.9,43.3l2.7-9.8C5.9,30.6,5,27.3,5,24C5,13.5,13.5,5,24,5 M24,43L24,43L24,43 M24,43L24,43L24,43 M24,4L24,4C13,4,4,13,4,24 c0,3.4,0.8,6.7,2.5,9.6L3.9,43c-0.1,0.3,0,0.7,0.3,1c0.2,0.2,0.4,0.3,0.7,0.3c0.1,0,0.2,0,0.3,0l9.7-2.5c2.8,1.5,6,2.2,9.2,2.2 c11,0,20-9,20-20c0-5.3-2.1-10.4-5.8-14.1C34.4,6.1,29.4,4,24,4L24,4z" />
+                                  <path fill="#40c351" d="M35.2,12.8c-3-3-6.9-4.6-11.2-4.6C15.3,8.2,8.2,15.3,8.2,24c0,3,0.8,5.9,2.4,8.4L11,33l-1.6,5.8 l6-1.6l0.6,0.3c2.4,1.4,5.2,2.2,8,2.2h0c8.7,0,15.8-7.1,15.8-15.8C39.8,19.8,38.2,15.8,35.2,12.8z" />
+                                  <path fill="#fff" fillRule="evenodd" d="M19.3,16c-0.4-0.8-0.7-0.8-1.1-0.8c-0.3,0-0.6,0-0.9,0 s-0.8,0.1-1.3,0.6c-0.4,0.5-1.7,1.6-1.7,4s1.7,4.6,1.9,4.9s3.3,5.3,8.1,7.2c4,1.6,4.8,1.3,5.7,1.2c0.9-0.1,2.8-1.1,3.2-2.3 c0.4-1.1,0.4-2.1,0.3-2.3c-0.1-0.2-0.4-0.3-0.9-0.6s-2.8-1.4-3.2-1.5c-0.4-0.2-0.8-0.2-1.1,0.2c-0.3,0.5-1.2,1.5-1.5,1.9 c-0.3,0.3-0.6,0.4-1,0.1c-0.5-0.2-2-0.7-3.8-2.4c-1.4-1.3-2.4-2.8-2.6-3.3c-0.3-0.5,0-0.7,0.2-1c0.2-0.2,0.5-0.6,0.7-0.8 c0.2-0.3,0.3-0.5,0.5-0.8c0.2-0.3,0.1-0.6,0-0.8C20.6,19.3,19.7,17,19.3,16z" clipRule="evenodd" />
+                                </svg>
+                              </button>
+                            )}
                           </div>
                         </TableCell>
                         <TableCell>{job.job_description || 'Sin descripción'}</TableCell>
-                        <TableCell>{labs.find((lab) => lab.id === job.laboratory_id)?.name || '-'}</TableCell>
-                        <TableCell>{specialists.find((spec) => spec.id === job.specialist_id)?.name || '-'}</TableCell>
+                        <TableCell>{meta.labName || '-'}</TableCell>
+                        <TableCell>{meta.specName || '-'}</TableCell>
                         <TableCell>
                           <span
                             className={
@@ -1163,10 +1231,8 @@ function DashboardPage() {
                             {job.status}
                           </span>
                         </TableCell>
-                        <TableCell>{job.order_date ? format(parseISO(job.order_date), 'dd/MM/yyyy', { locale: es }) : '-'}</TableCell>
-                        <TableCell>
-                          {job.order_date ? capitalizeFirst(formatDistanceToNow(parseISO(job.order_date), { locale: es, addSuffix: true }).replace(/\balrededor(?: de)?\s*/i, '')) : '-'}
-                        </TableCell>
+                        <TableCell>{meta.orderDateText}</TableCell>
+                        <TableCell>{meta.elapsedText}</TableCell>
                       </TableRow>
                     )
                   }
@@ -1199,11 +1265,6 @@ function DashboardPage() {
               }
             }}
           >
-            <DialogTrigger asChild>
-              <Button className="bg-teal-600 text-white hover:bg-teal-500">
-                <FlaskConical className="mr-2 h-4 w-4" /> {editingLabId ? 'Editar laboratorio' : 'Nuevo laboratorio'}
-              </Button>
-            </DialogTrigger>
             <DialogContent className="sm:max-w-lg">
               <DialogHeader>
                 <DialogTitle>{editingLabId ? 'Editar laboratorio' : 'Nuevo laboratorio'}</DialogTitle>
@@ -1300,11 +1361,6 @@ function DashboardPage() {
               }
             }}
           >
-            <DialogTrigger asChild>
-              <Button className="bg-teal-600 text-white hover:bg-teal-500">
-                <Stethoscope className="mr-2 h-4 w-4" /> {editingSpecId ? 'Editar especialista' : 'Nuevo especialista'}
-              </Button>
-            </DialogTrigger>
             <DialogContent className="sm:max-w-lg">
               <DialogHeader>
                 <DialogTitle>{editingSpecId ? 'Editar especialista' : 'Nuevo especialista'}</DialogTitle>
@@ -1403,19 +1459,6 @@ function DashboardPage() {
   } else if (section === 'pacientes') {
     sectionContent = (
       <>
-        <div className="flex flex-wrap items-center justify-end gap-4 mb-4">
-          <Button
-            className="bg-teal-600 text-white hover:bg-teal-500"
-            onClick={() => {
-              setEditingPatientId(null)
-              setPatientForm({ name: '', phone: '', email: '', code: '' })
-              setPendingPatientSelection(false)
-              setPatientOpen(true)
-            }}
-          >
-            <UserRound className="mr-2 h-4 w-4" /> Nuevo paciente
-          </Button>
-        </div>
 
         <Filtros
           filters={patientsFilters}
@@ -1444,13 +1487,85 @@ function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-slate-100">
-      <div className="mx-auto w-full px-6 py-10 h-screen flex flex-col">
+      <BillingModal />
+      <div className="mx-auto w-full px-6 pt-4 pb-6 h-screen flex flex-col">
+        <SectionHeader
+          icon={
+            section === 'trabajos' ? <ClipboardPlus className="h-5 w-5 text-slate-500" /> :
+              section === 'laboratorios' ? <FlaskConical className="h-5 w-5 text-slate-500" /> :
+                section === 'especialistas' ? <Stethoscope className="h-5 w-5 text-slate-500" /> :
+                  <UserRound className="h-5 w-5 text-slate-500" />
+          }
+          title={sectionTitle}
+          newButton={(() => {
+            if (section === 'trabajos') {
+              return (
+                <Button
+                  ref={newJobButtonRef}
+                  className={`bg-teal-600 text-white hover:bg-teal-500 ${showNewJobOnboarding ? 'relative z-50 onboarding-cta' : ''}`}
+                  onClick={() => {
+                    setEditingJobId(null)
+                    setForm(getEmptyJobForm())
+                    setOrderDateInteracted(false)
+                    setOpen(true)
+                    if (showNewJobOnboarding) {
+                      setShowNewJobOnboarding(false)
+                      void markNewJobSeen()
+                    }
+                  }}
+                >
+                  <ClipboardPlus className="mr-2 h-4 w-4" /> Nuevo trabajo
+                </Button>
+              )
+            }
+            if (section === 'laboratorios') {
+              return (
+                <Button className="bg-teal-600 text-white hover:bg-teal-500" onClick={() => { setEditingLabId(null); setLabForm({ name: '', phone: '', email: '' }); setLabOpen(true); }}>
+                  <FlaskConical className="mr-2 h-4 w-4" /> Nuevo laboratorio
+                </Button>
+              )
+            }
+            if (section === 'especialistas') {
+              return (
+                <Button className="bg-teal-600 text-white hover:bg-teal-500" onClick={() => { setEditingSpecId(null); setSpecForm({ name: '', specialty: '', phone: '', email: '' }); setSpecOpen(true); }}>
+                  <Stethoscope className="mr-2 h-4 w-4" /> Nuevo especialista
+                </Button>
+              )
+            }
+            if (section === 'pacientes') {
+              return (
+                <Button className="bg-teal-600 text-white hover:bg-teal-500" onClick={() => { setEditingPatientId(null); setPatientForm({ name: '', phone: '', email: '', code: '' }); setPatientOpen(true); setPendingPatientSelection(false); }}>
+                  <UserRound className="mr-2 h-4 w-4" /> Nuevo paciente
+                </Button>
+              )
+            }
+            return null
+          })()}
+        />
+
         <div className="flex-1 min-h-0 flex flex-col">{sectionContent}</div>
       </div>
 
       {showNewJobOnboarding && spotRect && (
-        <div className="fixed inset-0 z-40 pointer-events-auto" aria-hidden>
-          <div className="absolute inset-0 bg-black/55 backdrop-blur-sm"></div>
+        <div
+          className="fixed inset-0 z-40 pointer-events-auto"
+          aria-hidden
+          onClick={() => {
+            setShowNewJobOnboarding(false)
+            void markNewJobSeen()
+          }}
+          onPointerDownCapture={() => {
+            // asegurar que TOC/PTR/CLICK cierren el spotlight incluso si otros
+            // handlers intermedian
+            setShowNewJobOnboarding(false)
+            void markNewJobSeen()
+          }}
+          onTouchStart={() => {
+            setShowNewJobOnboarding(false)
+            void markNewJobSeen()
+          }}
+        >
+          <div className="absolute inset-0 bg-black/55 backdrop-blur-sm" />
 
           <div
             style={{
@@ -1463,7 +1578,6 @@ function DashboardPage() {
             }}
             className="onboarding-ring pointer-events-none"
           />
-
 
         </div>
       )}

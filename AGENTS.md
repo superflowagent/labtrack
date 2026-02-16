@@ -39,6 +39,7 @@ Este documento es la fuente de verdad absoluta para cualquier agente de IA. Esta
 - **⚠️ CI/CD & Despliegue Automático:**
     - **Trigger de GitHub Actions:** Entiende que al hacer `git push`, se dispara un flujo automático (github action). La Action aplica automáticamente las nuevas migraciones a la base de datos de producción. La Action también despliega automáticamente todas las Edge Functions al servidor remoto.
     - **Consistencia:** No intentes aplicar cambios manuales a producción vía CLI (`--remote`); confía siempre en el `git push` para sincronizar el estado.
+- **Despliegue de producción:** No lo debes hacer tú a no ser que te lo pida, pero para que tengas el contexto, al hacer un push a main, se despliega en Vercel automáticamente el repo.
 
 ## 🛠 4. Git & Operaciones
 - **Push como Despliegue:** No hagas `git push` a menos que se te pida explícitamente o la tarea esté terminada y validada localmente. **Push = Producción.**
