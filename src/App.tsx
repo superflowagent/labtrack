@@ -6,7 +6,6 @@ import OgPreview from '@/pages/OgPreview'
 import DashboardPage from '@/pages/DashboardPage'
 import ClinicSettings from '@/pages/ClinicSettings'
 import { Sidebar } from '@/components/Sidebar'
-// removed unused import (LaboratoriesPage / SpecialistsPage are routed from DashboardPage now)
 
 
 const DashboardLayout = () => (
