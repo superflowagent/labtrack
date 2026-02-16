@@ -21,7 +21,7 @@ interface FiltrosProps {
     statuses?: string[];
 }
 
-export const Filtros: React.FC<FiltrosProps> = ({
+export const Filtros: React.FC<FiltrosProps & { asCard?: boolean }> = ({
     filters,
     setFilters,
     labs = [],
@@ -29,8 +29,9 @@ export const Filtros: React.FC<FiltrosProps> = ({
     showLaboratorio = true,
     showEstado = true,
     statuses = [],
-}) => (
-    <Card className="border-slate-200 bg-white/80 p-5">
+    asCard = true,
+}) => {
+    const content = (
         <div className="grid gap-4 sm:grid-cols-4">
             {showPaciente && (
                 <div className="space-y-2">
@@ -112,5 +113,7 @@ export const Filtros: React.FC<FiltrosProps> = ({
                 </div>
             )}
         </div>
-    </Card>
-);
+    );
+
+    return asCard ? <Card className="border-slate-200 bg-white/80 p-5">{content}</Card> : content;
+};
