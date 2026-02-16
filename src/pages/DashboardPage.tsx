@@ -54,6 +54,7 @@ import {
 } from '@/services/supabase/queries'
 import type { Job, JobStatus, Laboratory, Specialist, Patient } from '@/types/domain'
 import { LaboratoriesTable, PatientsTable, SpecialistsTable } from './LaboratoriesSpecialistsTables'
+import ClinicSettings from '@/pages/ClinicSettings'
 
 const STATUSES: JobStatus[] = [
   'En laboratorio',
@@ -157,7 +158,7 @@ function DashboardPage() {
     const gapClass = inset ? 'gap-2' : 'gap-1'
     // use a fixed width in the dropdown list so the name always starts at the same position
     // ensure long codes are truncated (no overlap) and show full code on hover
-    const codeWidthClass = inset ? 'w-10 flex-none truncate whitespace-nowrap overflow-hidden' : 'min-w-[1.5rem]'
+    const codeWidthClass = inset ? 'w-12 flex-none truncate whitespace-nowrap overflow-hidden' : 'min-w-[2rem]'
 
     return (
       <div className={`flex items-center ${gapClass} w-full justify-start ${inset ? 'pl-2' : ''}`}>
@@ -787,7 +788,7 @@ function DashboardPage() {
   let sectionContent: ReactNode = null
   if (section === 'trabajos') {
     sectionContent = (
-      <Card className="border-slate-200 bg-white/80 p-5 mb-6">
+      <Card className="border-slate-200 bg-white/80 p-5 mb-6 flex flex-col flex-1 min-h-0 overflow-hidden">
         <div className="grid gap-4 sm:grid-cols-4">
           <div className="space-y-2">
             <Label>Buscar</Label>
@@ -873,137 +874,127 @@ function DashboardPage() {
             )}
           </Button>
         </div>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="pl-6">Paciente</TableHead>
-              <TableHead>Trabajo</TableHead>
-              <TableHead>Laboratorio</TableHead>
-              <TableHead>Especialista</TableHead>
-              <TableHead>Estado</TableHead>
-              <TableHead>Fecha</TableHead>
-              <TableHead>Transcurrido</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {loading && (
+        <div className="p-0 flex-1 min-h-0 overflow-auto">
+          <Table>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={7} className="text-center text-sm text-slate-500">
-                  Cargando trabajos...
-                </TableCell>
+                <TableHead className="pl-6">Paciente</TableHead>
+                <TableHead>Trabajo</TableHead>
+                <TableHead>Laboratorio</TableHead>
+                <TableHead>Especialista</TableHead>
+                <TableHead>Estado</TableHead>
+                <TableHead>Fecha</TableHead>
+                <TableHead>Transcurrido</TableHead>
               </TableRow>
-            )}
-            {error && !loading && (
-              <TableRow>
-                <TableCell colSpan={7} className="text-center text-sm text-rose-500">
-                  {error}
-                </TableCell>
-              </TableRow>
-            )}
-            {!loading && !error && filteredJobs.length === 0 && (
-              <TableRow>
-                <TableCell colSpan={7} className="text-center text-sm text-slate-500">
-                  No hay trabajos con esos filtros.
-                </TableCell>
-              </TableRow>
-            )}
-            {!loading &&
-              !error &&
-              visibleJobs.map((meta) => {
-                const job = meta.job;
-                return (
-                  <TableRow
-                    key={job.id}
-                    onClick={() => {
-                      setEditingJobId(job.id);
-                      setForm({
-                        patient_id: job.patient_id || '',
-                        job_description: job.job_description || '',
-                        laboratory_id: job.laboratory_id || '',
-                        specialist_id: job.specialist_id || '',
-                        order_date: job.order_date ? parseISO(job.order_date) : new Date(),
-                        status: job.status,
-                      });
-                      setOrderDateInteracted(true);
-                      setOpen(true);
-                    }}
-                    className="cursor-pointer hover:bg-slate-50"
-                  >
-                    <TableCell className="font-medium pl-6">
-                      <div className="flex items-center gap-3">
-                        <span className="w-10 text-right text-xs text-slate-500">{meta.patientCode || '-'}</span>
-                        <span>{meta.patientName || '-'}</span>
-                        {meta.patientPhone ? (
-                          <a
-                            href={meta.waUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="ml-2 inline-flex items-center justify-center w-6 h-6 rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-700 shadow-sm transition-transform transform hover:scale-105"
-                            title="Enviar WhatsApp"
-                            tabIndex={0}
-                            onClick={(e) => e.stopPropagation()}
-                            onKeyDown={(e) => e.stopPropagation()}
-                          >
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="20" height="20" className="transition-opacity opacity-80 group-hover:opacity-100">
-                              <path fill="#fff" d="M4.9,43.3l2.7-9.8C5.9,30.6,5,27.3,5,24C5,13.5,13.5,5,24,5c5.1,0,9.8,2,13.4,5.6 C41,14.2,43,18.9,43,24c0,10.5-8.5,19-19,19c0,0,0,0,0,0h0c-3.2,0-6.3-0.8-9.1-2.3L4.9,43.3z" />
-                              <path fill="#fff" d="M4.9,43.8c-0.1,0-0.3-0.1-0.4-0.1c-0.1-0.1-0.2-0.3-0.1-0.5L7,33.5c-1.6-2.9-2.5-6.2-2.5-9.6 C4.5,13.2,13.3,4.5,24,4.5c5.2,0,10.1,2,13.8,5.7c3.7,3.7,5.7,8.6,5.7,13.8c0,10.7-8.7,19.5-19.5,19.5c-3.2,0-6.3-0.8-9.1-2.3 L5,43.8C5,43.8,4.9,43.8,4.9,43.8z" />
-                              <path fill="#cfd8dc" d="M24,5c5.1,0,9.8,2,13.4,5.6C41,14.2,43,18.9,43,24c0,10.5-8.5,19-19,19h0c-3.2,0-6.3-0.8-9.1-2.3 L4.9,43.3l2.7-9.8C5.9,30.6,5,27.3,5,24C5,13.5,13.5,5,24,5 M24,43L24,43L24,43 M24,43L24,43L24,43 M24,4L24,4C13,4,4,13,4,24 c0,3.4,0.8,6.7,2.5,9.6L3.9,43c-0.1,0.3,0,0.7,0.3,1c0.2,0.2,0.4,0.3,0.7,0.3c0.1,0,0.2,0,0.3,0l9.7-2.5c2.8,1.5,6,2.2,9.2,2.2 c11,0,20-9,20-20c0-5.3-2.1-10.4-5.8-14.1C34.4,6.1,29.4,4,24,4L24,4z" />
-                              <path fill="#40c351" d="M35.2,12.8c-3-3-6.9-4.6-11.2-4.6C15.3,8.2,8.2,15.3,8.2,24c0,3,0.8,5.9,2.4,8.4L11,33l-1.6,5.8 l6-1.6l0.6,0.3c2.4,1.4,5.2,2.2,8,2.2h0c8.7,0,15.8-7.1,15.8-15.8C39.8,19.8,38.2,15.8,35.2,12.8z" />
-                              <path fill="#fff" fillRule="evenodd" d="M19.3,16c-0.4-0.8-0.7-0.8-1.1-0.8c-0.3,0-0.6,0-0.9,0 s-0.8,0.1-1.3,0.6c-0.4,0.5-1.7,1.6-1.7,4s1.7,4.6,1.9,4.9s3.3,5.3,8.1,7.2c4,1.6,4.8,1.3,5.7,1.2c0.9-0.1,2.8-1.1,3.2-2.3 c0.4-1.1,0.4-2.1,0.3-2.3c-0.1-0.2-0.4-0.3-0.9-0.6s-2.8-1.4-3.2-1.5c-0.4-0.2-0.8-0.2-1.1,0.2c-0.3,0.5-1.2,1.5-1.5,1.9 c-0.3,0.3-0.6,0.4-1,0.1c-0.5-0.2-2-0.7-3.8-2.4c-1.4-1.3-2.4-2.8-2.6-3.3c-0.3-0.5,0-0.7,0.2-1c0.2-0.2,0.5-0.6,0.7-0.8 c0.2-0.3,0.3-0.5,0.5-0.8c0.2-0.3,0.1-0.6,0-0.8C20.6,19.3,19.7,17,19.3,16z" clipRule="evenodd" />
-                            </svg>
-                          </a>
-                        ) : (
-                          <button
-                            type="button"
-                            aria-disabled="true"
-                            tabIndex={-1}
-                            onClick={(e) => e.stopPropagation()}
-                            onKeyDown={(e) => e.stopPropagation()}
-                            className="ml-2 inline-flex items-center justify-center w-6 h-6 rounded-md bg-transparent border border-slate-100 text-slate-300 cursor-not-allowed opacity-60 filter grayscale"
-                            title="Sin teléfono"
-                          >
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="20" height="20">
-                              <path fill="#fff" d="M4.9,43.3l2.7-9.8C5.9,30.6,5,27.3,5,24C5,13.5,13.5,5,24,5c5.1,0,9.8,2,13.4,5.6 C41,14.2,43,18.9,43,24c0,10.5-8.5,19-19,19c0,0,0,0,0,0h0c-3.2,0-6.3-0.8-9.1-2.3L4.9,43.3z" />
-                              <path fill="#fff" d="M4.9,43.8c-0.1,0-0.3-0.1-0.4-0.1c-0.1-0.1-0.2-0.3-0.1-0.5L7,33.5c-1.6-2.9-2.5-6.2-2.5-9.6 C4.5,13.2,13.3,4.5,24,4.5c5.2,0,10.1,2,13.8,5.7c3.7,3.7,5.7,8.6,5.7,13.8c0,10.7-8.7,19.5-19.5,19.5c-3.2,0-6.3-0.8-9.1-2.3 L5,43.8C5,43.8,4.9,43.8,4.9,43.8z" />
-                              <path fill="#cfd8dc" d="M24,5c5.1,0,9.8,2,13.4,5.6C41,14.2,43,18.9,43,24c0,10.5-8.5,19-19,19h0c-3.2,0-6.3-0.8-9.1-2.3 L4.9,43.3l2.7-9.8C5.9,30.6,5,27.3,5,24C5,13.5,13.5,5,24,5 M24,43L24,43L24,43 M24,43L24,43L24,43 M24,4L24,4C13,4,4,13,4,24 c0,3.4,0.8,6.7,2.5,9.6L3.9,43c-0.1,0.3,0,0.7,0.3,1c0.2,0.2,0.4,0.3,0.7,0.3c0.1,0,0.2,0,0.3,0l9.7-2.5c2.8,1.5,6,2.2,9.2,2.2 c11,0,20-9,20-20c0-5.3-2.1-10.4-5.8-14.1C34.4,6.1,29.4,4,24,4L24,4z" />
-                              <path fill="#40c351" d="M35.2,12.8c-3-3-6.9-4.6-11.2-4.6C15.3,8.2,8.2,15.3,8.2,24c0,3,0.8,5.9,2.4,8.4L11,33l-1.6,5.8 l6-1.6l0.6,0.3c2.4,1.4,5.2,2.2,8,2.2h0c8.7,0,15.8-7.1,15.8-15.8C39.8,19.8,38.2,15.8,35.2,12.8z" />
-                              <path fill="#fff" fillRule="evenodd" d="M19.3,16c-0.4-0.8-0.7-0.8-1.1-0.8c-0.3,0-0.6,0-0.9,0 s-0.8,0.1-1.3,0.6c-0.4,0.5-1.7,1.6-1.7,4s1.7,4.6,1.9,4.9s3.3,5.3,8.1,7.2c4,1.6,4.8,1.3,5.7,1.2c0.9-0.1,2.8-1.1,3.2-2.3 c0.4-1.1,0.4-2.1,0.3-2.3c-0.1-0.2-0.4-0.3-0.9-0.6s-2.8-1.4-3.2-1.5c-0.4-0.2-0.8-0.2-1.1,0.2c-0.3,0.5-1.2,1.5-1.5,1.9 c-0.3,0.3-0.6,0.4-1,0.1c-0.5-0.2-2-0.7-3.8-2.4c-1.4-1.3-2.4-2.8-2.6-3.3c-0.3-0.5,0-0.7,0.2-1c0.2-0.2,0.5-0.6,0.7-0.8 c0.2-0.3,0.3-0.5,0.5-0.8c0.2-0.3,0.1-0.6,0-0.8C20.6,19.3,19.7,17,19.3,16z" clipRule="evenodd" />
-                            </svg>
-                          </button>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell>{job.job_description || 'Sin descripción'}</TableCell>
-                    <TableCell>{meta.labName || '-'}</TableCell>
-                    <TableCell>{meta.specName || '-'}</TableCell>
-                    <TableCell>
-                      <span
-                        className={
-                          job.status === 'En laboratorio'
-                            ? 'inline-flex items-center gap-1.5 rounded-full bg-yellow-50 px-3 py-1 text-xs font-medium text-yellow-700'
-                            : job.status === 'En clinica (sin citar)'
-                              ? 'inline-flex items-center gap-1.5 rounded-full bg-orange-100 px-3 py-1 text-xs font-medium text-orange-800'
-                              : job.status === 'En clinica (citado)'
-                                ? 'inline-flex items-center gap-1.5 rounded-full bg-purple-50 px-3 py-1 text-xs font-medium text-purple-700'
-                                : job.status === 'Cerrado'
-                                  ? 'inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700'
-                                  : 'inline-flex items-center gap-1.5 rounded-full bg-teal-50 px-3 py-1 text-xs font-medium text-teal-700'
-                        }
-                      >
-                        {job.status === 'En laboratorio' && <FlaskConical className="h-3 w-3" />}
-                        {job.status === 'En clinica (sin citar)' && <Clock className="h-3 w-3" />}
-                        {job.status === 'En clinica (citado)' && <CalendarCheck className="h-3 w-3" />}
-                        {job.status === 'Cerrado' && <Archive className="h-3 w-3" />}
-                        {job.status}
-                      </span>
-                    </TableCell>
-                    <TableCell>{meta.orderDateText}</TableCell>
-                    <TableCell>{meta.elapsedText}</TableCell>
-                  </TableRow>
-                );
-              })}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {loading && (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center text-sm text-slate-500">
+                    Cargando trabajos...
+                  </TableCell>
+                </TableRow>
+              )}
+              {error && !loading && (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center text-sm text-rose-500">
+                    {error}
+                  </TableCell>
+                </TableRow>
+              )}
+              {!loading && !error && filteredJobs.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center text-sm text-slate-500">
+                    No hay trabajos con esos filtros.
+                  </TableCell>
+                </TableRow>
+              )}
+              {!loading &&
+                !error &&
+                visibleJobs.map((meta) => {
+                  const job = meta.job;
+                  return (
+                    <TableRow
+                      key={job.id}
+                      onClick={() => {
+                        setEditingJobId(job.id);
+                        setForm({
+                          patient_id: job.patient_id || '',
+                          job_description: job.job_description || '',
+                          laboratory_id: job.laboratory_id || '',
+                          specialist_id: job.specialist_id || '',
+                          order_date: job.order_date ? parseISO(job.order_date) : new Date(),
+                          status: job.status,
+                        });
+                        setOrderDateInteracted(true);
+                        setOpen(true);
+                      }}
+                      className="cursor-pointer hover:bg-slate-50"
+                    >
+                      <TableCell className="font-medium pl-6">
+                        <div className="flex items-center gap-3">
+                          <span className="w-10 text-right text-xs text-slate-500">{meta.patientCode || '-'}</span>
+                          <span>{meta.patientName || '-'}</span>
+                          {meta.patientPhone ? (
+                            <a
+                              href={meta.waUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="ml-2 inline-flex items-center justify-center w-6 h-6 rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-700 shadow-sm transition-transform transform hover:scale-105"
+                              title="Enviar WhatsApp"
+                              tabIndex={0}
+                              onClick={(e) => e.stopPropagation()}
+                              onKeyDown={(e) => e.stopPropagation()}
+                            >
+                              {/* svg... */}
+                            </a>
+                          ) : (
+                            <button
+                              type="button"
+                              aria-disabled="true"
+                              tabIndex={-1}
+                              onClick={(e) => e.stopPropagation()}
+                              onKeyDown={(e) => e.stopPropagation()}
+                              className="ml-2 inline-flex items-center justify-center w-6 h-6 rounded-md bg-transparent border border-slate-100 text-slate-300 cursor-not-allowed opacity-60 filter grayscale"
+                              title="Sin teléfono"
+                            >
+                              {/* svg... */}
+                            </button>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>{job.job_description || 'Sin descripción'}</TableCell>
+                      <TableCell>{meta.labName || '-'}</TableCell>
+                      <TableCell>{meta.specName || '-'}</TableCell>
+                      <TableCell>
+                        <span
+                          className={
+                            job.status === 'En laboratorio'
+                              ? 'inline-flex items-center gap-1.5 rounded-full bg-yellow-50 px-3 py-1 text-xs font-medium text-yellow-700'
+                              : job.status === 'En clinica (sin citar)'
+                                ? 'inline-flex items-center gap-1.5 rounded-full bg-orange-100 px-3 py-1 text-xs font-medium text-orange-800'
+                                : job.status === 'En clinica (citado)'
+                                  ? 'inline-flex items-center gap-1.5 rounded-full bg-purple-50 px-3 py-1 text-xs font-medium text-purple-700'
+                                  : job.status === 'Cerrado'
+                                    ? 'inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700'
+                                    : 'inline-flex items-center gap-1.5 rounded-full bg-teal-50 px-3 py-1 text-xs font-medium text-teal-700'
+                          }
+                        >
+                          {job.status === 'En laboratorio' && <FlaskConical className="h-3 w-3" />}
+                          {job.status === 'En clinica (sin citar)' && <Clock className="h-3 w-3" />}
+                          {job.status === 'En clinica (citado)' && <CalendarCheck className="h-3 w-3" />}
+                          {job.status === 'Cerrado' && <Archive className="h-3 w-3" />}
+                          {job.status}
+                        </span>
+                      </TableCell>
+                      <TableCell>{meta.orderDateText}</TableCell>
+                      <TableCell>{meta.elapsedText}</TableCell>
+                    </TableRow>
+                  );
+                })}
+            </TableBody>
+          </Table>
+        </div>
         <CardFooter>
           <Pagination
             total={filteredJobs.length}
@@ -1016,7 +1007,7 @@ function DashboardPage() {
     );
   } else if (section === 'laboratorios') {
     sectionContent = (
-      <Card className="border-slate-200 bg-white/80 p-5 mb-6">
+      <Card className="border-slate-200 bg-white/80 p-5 mb-6 flex flex-col flex-1 min-h-0 overflow-hidden">
         <div className="flex flex-wrap items-center justify-end gap-4 mb-4">
           <Dialog
             open={labOpen}
@@ -1114,7 +1105,7 @@ function DashboardPage() {
     )
   } else if (section === 'especialistas') {
     sectionContent = (
-      <Card className="border-slate-200 bg-white/80 p-5 mb-6">
+      <Card className="border-slate-200 bg-white/80 p-5 mb-6 flex flex-col flex-1 min-h-0 overflow-hidden">
         <div className="flex flex-wrap items-center justify-end gap-4 mb-4">
           <Dialog
             open={specOpen}
@@ -1225,7 +1216,7 @@ function DashboardPage() {
     )
   } else if (section === 'pacientes') {
     sectionContent = (
-      <Card className="border-slate-200 bg-white/80 p-5 mb-6">
+      <Card className="border-slate-200 bg-white/80 p-5 mb-6 flex flex-col flex-1 min-h-0 overflow-hidden">
         <div className="mb-4" />
         <Filtros
           asCard={false}
@@ -1252,6 +1243,8 @@ function DashboardPage() {
         />
       </Card>
     )
+  } else if (section === 'ajustes') {
+    sectionContent = <ClinicSettings />
   }
 
   return (
@@ -1408,10 +1401,7 @@ function DashboardPage() {
                     </div>
                     {filteredPatients.map((p) => (
                       <SelectItem key={p.id} value={p.id}>
-                        <div className="flex items-center gap-1">
-                          <span className="min-w-[2rem] text-xs text-slate-500 truncate">{p.code || '-'}</span>
-                          <span className="truncate">{p.name}</span>
-                        </div>
+                        <PatientPreview patientId={p.id} inset />
                       </SelectItem>
                     ))}
                     <SelectSeparator />
