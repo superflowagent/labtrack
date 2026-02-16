@@ -163,7 +163,7 @@ function DashboardPage() {
   }, [])
 
   const defaultFilters = {
-    paciente: '',
+    trabajo: '',
     laboratorioId: 'all',
     estado: 'all',
     sortBy: 'paciente',
@@ -218,7 +218,7 @@ function DashboardPage() {
 
   const activeFiltersCount = useMemo(() => {
     let count = 0
-    if (filters.paciente.trim()) count += 1
+    if (filters.trabajo?.trim()) count += 1
     if (filters.laboratorioId !== 'all') count += 1
     if (filters.estado !== 'all') count += 1
     if (filters.maxDaysElapsed && filters.maxDaysElapsed > 0) count += 1
@@ -227,19 +227,18 @@ function DashboardPage() {
 
   const jobsForElapsed = useMemo(() => {
     return jobs.filter((job) => {
-      const patient = patients.find((p) => p.id === job.patient_id)
-      const query = normalizeSearch(filters.paciente)
-      const matchPaciente = query
-        ? (normalizeSearch(patient?.name).includes(query) || normalizeSearch(patient?.code).includes(query))
+      const query = normalizeSearch(filters.trabajo)
+      const matchTrabajo = query
+        ? normalizeSearch(job.job_description ?? '').includes(query)
         : true
       const matchLab = filters.laboratorioId !== 'all' ? job.laboratory_id === filters.laboratorioId : true
       // Mostrar por defecto TODOS los estados excepto 'Cerrado'.
       // Si el usuario selecciona explícitamente un estado (p. ej. 'Cerrado'), mostrar solo ese estado.
       const matchEstado = filters.estado !== 'all' ? job.status === filters.estado : job.status !== 'Cerrado'
 
-      return matchPaciente && matchLab && matchEstado
+      return matchTrabajo && matchLab && matchEstado
     })
-  }, [jobs, filters, patients])
+  }, [jobs, filters])
 
   const filteredJobs = useMemo(() => {
     let filtered = jobsForElapsed.filter((job) => {
@@ -771,9 +770,9 @@ function DashboardPage() {
             <div className="space-y-2">
               <Label>Buscar</Label>
               <Input
-                value={filters.paciente}
-                onChange={(event) => setFilters((prev) => ({ ...prev, paciente: event.target.value }))}
-                placeholder="Buscar por nombre"
+                value={filters.trabajo}
+                onChange={(event) => setFilters((prev) => ({ ...prev, trabajo: event.target.value }))}
+                placeholder="Buscar por trabajo"
               />
             </div>
             <div className="space-y-2">
@@ -1267,94 +1266,17 @@ function DashboardPage() {
     sectionContent = (
       <>
         <div className="flex flex-wrap items-center justify-end gap-4 mb-4">
-          <Dialog
-            open={patientOpen}
-            onOpenChange={(value) => {
-              setPatientOpen(value)
-              if (!value) {
-                const wasPending = pendingPatientSelection
-                setEditingPatientId(null)
-                setPatientForm({ name: '', phone: '', email: '', code: '' })
-                setPendingPatientSelection(false)
-                if (wasPending) setOpen(true)
-              }
+          <Button
+            className="bg-teal-600 text-white hover:bg-teal-500"
+            onClick={() => {
+              setEditingPatientId(null)
+              setPatientForm({ name: '', phone: '', email: '', code: '' })
+              setPendingPatientSelection(false)
+              setPatientOpen(true)
             }}
           >
-            <DialogTrigger asChild>
-              <Button className="bg-teal-600 text-white hover:bg-teal-500">
-                <UserRound className="mr-2 h-4 w-4" /> {editingPatientId ? 'Editar paciente' : 'Nuevo paciente'}
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-lg">
-              <DialogHeader>
-                <DialogTitle>{editingPatientId ? 'Editar paciente' : 'Nuevo paciente'}</DialogTitle>
-                <DialogDescription>
-                  Completa la información del {editingPatientId ? 'paciente' : 'nuevo paciente'}
-                </DialogDescription>
-              </DialogHeader>
-              <form
-                onSubmit={async (event) => {
-                  event.preventDefault()
-                  await handleSavePatient()
-                }}
-                className="space-y-4"
-              >
-                <div className="space-y-2">
-                  <Label>Código</Label>
-                  <Input
-                    value={patientForm.code}
-                    onChange={(event) => setPatientForm((prev) => ({ ...prev, code: event.target.value }))}
-                    placeholder="Código del paciente"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Nombre</Label>
-                  <Input
-                    value={patientForm.name}
-                    onChange={(event) => setPatientForm((prev) => ({ ...prev, name: event.target.value }))}
-                    placeholder="Nombre del paciente"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Móvil</Label>
-                  <Input
-                    value={patientForm.phone}
-                    onChange={(event) => setPatientForm((prev) => ({ ...prev, phone: event.target.value }))}
-                    placeholder="Teléfono del paciente"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Email</Label>
-                  <Input
-                    value={patientForm.email}
-                    onChange={(event) => setPatientForm((prev) => ({ ...prev, email: event.target.value }))}
-                    placeholder="Email del paciente"
-                  />
-                </div>
-                {patientFormError && <p className="text-sm text-rose-600">{patientFormError}</p>}
-                <div className="flex gap-4">
-                  {editingPatientId && (
-                    <Button
-                      type="button"
-                      variant="destructive"
-                      className="flex-1"
-                      disabled={patientSaving || deletingPatient}
-                      onClick={handleDeletePatient}
-                    >
-                      {deletingPatient ? 'Eliminando...' : 'Eliminar paciente'}
-                    </Button>
-                  )}
-                  <Button
-                    type="submit"
-                    disabled={patientSaving || deletingPatient}
-                    className="flex-1 bg-teal-600 text-white hover:bg-teal-500"
-                  >
-                    {patientSaving ? 'Guardando...' : editingPatientId ? 'Guardar cambios' : 'Guardar paciente'}
-                  </Button>
-                </div>
-              </form>
-            </DialogContent>
-          </Dialog>
+            <UserRound className="mr-2 h-4 w-4" /> Nuevo paciente
+          </Button>
         </div>
 
         <Filtros
@@ -1385,6 +1307,90 @@ function DashboardPage() {
   return (
     <div className="min-h-screen bg-slate-100">
       <div className="mx-auto w-full px-6 py-10">{sectionContent}</div>
+      <Dialog
+        open={patientOpen}
+        onOpenChange={(value) => {
+          setPatientOpen(value)
+          if (!value) {
+            const wasPending = pendingPatientSelection
+            setEditingPatientId(null)
+            setPatientForm({ name: '', phone: '', email: '', code: '' })
+            setPendingPatientSelection(false)
+            if (wasPending) setOpen(true)
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{editingPatientId ? 'Editar paciente' : 'Nuevo paciente'}</DialogTitle>
+            <DialogDescription>
+              Completa la informacion del {editingPatientId ? 'paciente' : 'nuevo paciente'}
+            </DialogDescription>
+          </DialogHeader>
+          <form
+            onSubmit={async (event) => {
+              event.preventDefault()
+              await handleSavePatient()
+            }}
+            className="space-y-4"
+          >
+            <div className="space-y-2">
+              <Label>Código</Label>
+              <Input
+                value={patientForm.code}
+                onChange={(event) => setPatientForm((prev) => ({ ...prev, code: event.target.value }))}
+                placeholder="Código del paciente"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Nombre</Label>
+              <Input
+                value={patientForm.name}
+                onChange={(event) => setPatientForm((prev) => ({ ...prev, name: event.target.value }))}
+                placeholder="Nombre del paciente"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Móvil</Label>
+              <Input
+                value={patientForm.phone}
+                onChange={(event) => setPatientForm((prev) => ({ ...prev, phone: event.target.value }))}
+                placeholder="Teléfono del paciente"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Email</Label>
+              <Input
+                value={patientForm.email}
+                onChange={(event) => setPatientForm((prev) => ({ ...prev, email: event.target.value }))}
+                placeholder="Email del paciente"
+              />
+            </div>
+            {patientFormError && <p className="text-sm text-rose-600">{patientFormError}</p>}
+            <div className="flex gap-4">
+              {editingPatientId && (
+                <Button
+                  type="button"
+                  variant="destructive"
+                  className="flex-1"
+                  disabled={patientSaving || deletingPatient}
+                  onClick={handleDeletePatient}
+                >
+                  {deletingPatient ? 'Eliminando...' : 'Eliminar paciente'}
+                </Button>
+              )}
+              <Button
+                type="submit"
+                disabled={patientSaving || deletingPatient}
+                className="flex-1 bg-teal-600 text-white hover:bg-teal-500"
+              >
+                {patientSaving ? 'Guardando...' : editingPatientId ? 'Guardar cambios' : 'Guardar paciente'}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
       <Snackbar
         open={!!snackbar.open}
         message={snackbar.message || ''}
