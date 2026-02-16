@@ -1,12 +1,13 @@
 import { format, formatDistanceToNow, parseISO, differenceInCalendarDays } from 'date-fns'
 import { es } from 'date-fns/locale'
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { normalizeSearch } from '@/lib/utils'
 import { Calendar as CalendarIcon, ClipboardPlus, FlaskConical, Stethoscope, UserRound, Clock, CalendarCheck, Archive } from 'lucide-react'
 import { Filtros } from '@/components/Filtros'
 import { Button } from '@/components/ui/button'
 import { Calendar } from '@/components/ui/calendar'
-import { Card } from '@/components/ui/card'
+import { Card, CardFooter } from '@/components/ui/card'
+import { Pagination } from '@/components/ui/pagination'
 import {
   Dialog,
   DialogContent,
@@ -131,7 +132,7 @@ function DashboardPage() {
       <div className={`flex items-center ${gapClass} w-full justify-start ${inset ? 'pl-2' : ''}`}>
         {/* Only reserve space for the code when a patient is selected */}
         {patientId ? (
-          <span title={p?.code} className={`${codeWidthClass} text-left text-xs text-slate-500`}>{p?.code ?? ''}</span>
+          <span title={p?.code ?? undefined} className={`${codeWidthClass} text-left text-xs text-slate-500`}>{p?.code ?? ''}</span>
         ) : null}
         <span className={(patientId ? 'text-slate-700 ' : 'text-slate-500 ') + 'flex-1 truncate text-sm text-left'}>
           {p?.name ?? placeholder}
@@ -227,18 +228,26 @@ function DashboardPage() {
 
   const jobsForElapsed = useMemo(() => {
     return jobs.filter((job) => {
-      const query = normalizeSearch(filters.trabajo)
-      const matchTrabajo = query
-        ? normalizeSearch(job.job_description ?? '').includes(query)
+      const patient = patients.find((p) => p.id === job.patient_id)
+      const q = normalizeSearch(filters.trabajo)
+
+      // combined search: job_description OR patient name/code
+      const matchQuery = q
+        ? (
+          normalizeSearch(job.job_description ?? '').includes(q) ||
+          normalizeSearch(patient?.name).includes(q) ||
+          normalizeSearch(patient?.code).includes(q)
+        )
         : true
+
       const matchLab = filters.laboratorioId !== 'all' ? job.laboratory_id === filters.laboratorioId : true
       // Mostrar por defecto TODOS los estados excepto 'Cerrado'.
       // Si el usuario selecciona explícitamente un estado (p. ej. 'Cerrado'), mostrar solo ese estado.
       const matchEstado = filters.estado !== 'all' ? job.status === filters.estado : job.status !== 'Cerrado'
 
-      return matchTrabajo && matchLab && matchEstado
+      return matchQuery && matchLab && matchEstado
     })
-  }, [jobs, filters])
+  }, [jobs, filters, patients])
 
   const filteredJobs = useMemo(() => {
     let filtered = jobsForElapsed.filter((job) => {
@@ -280,6 +289,42 @@ function DashboardPage() {
 
     return filtered
   }, [filters, jobsForElapsed, labs, specialists, patients])
+
+  const [jobsPage, setJobsPage] = useState(1)
+  const [jobsPageSize, setJobsPageSize] = useState(10)
+  const jobsTableRef = useRef<HTMLTableElement | null>(null)
+
+  const jobsTotalPages = Math.max(1, Math.ceil(filteredJobs.length / jobsPageSize))
+  const jobsEffectivePage = Math.min(jobsPage, jobsTotalPages)
+
+  const paginatedJobs = useMemo(() => {
+    const start = (jobsEffectivePage - 1) * jobsPageSize
+    return filteredJobs.slice(start, start + jobsPageSize)
+  }, [filteredJobs, jobsEffectivePage, jobsPageSize])
+
+  useEffect(() => {
+    const tableEl = jobsTableRef.current
+    if (!tableEl) return
+    const container = tableEl.parentElement as HTMLElement | null
+
+    const measure = () => {
+      const headerH = (tableEl.querySelector('thead') as HTMLElement | null)?.offsetHeight ?? 0
+      const rowH = (tableEl.querySelector('tbody tr') as HTMLElement | null)?.offsetHeight ?? 48
+      const containerH = container?.clientHeight ?? 0
+      const rowsThatFit = Math.max(1, Math.floor((containerH - headerH) / rowH))
+      const capped = Math.min(rowsThatFit, 50)
+      if (capped !== jobsPageSize) setJobsPageSize(capped)
+    }
+
+    measure()
+    const ro = new ResizeObserver(measure)
+    if (container) ro.observe(container)
+    window.addEventListener('resize', measure)
+    return () => {
+      ro.disconnect()
+      window.removeEventListener('resize', measure)
+    }
+  }, [filteredJobs.length, jobsPageSize])
 
   const capitalizeFirst = (s?: string) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s)
 
@@ -772,7 +817,7 @@ function DashboardPage() {
               <Input
                 value={filters.trabajo}
                 onChange={(event) => setFilters((prev) => ({ ...prev, trabajo: event.target.value }))}
-                placeholder="Buscar por trabajo"
+                placeholder="Buscar por paciente o trabajo"
               />
             </div>
             <div className="space-y-2">
@@ -852,17 +897,18 @@ function DashboardPage() {
             </Button>
           </div>
         </Card>
-        <Card className="mt-6 border-slate-200 bg-white">
-          <Table>
-            <colgroup>
-              <col style={{ width: '20%' }} />
-              <col style={{ width: '20%' }} />
-              <col style={{ width: '15%' }} />
-              <col style={{ width: '15%' }} />
-              <col style={{ width: '10%' }} />
-              <col style={{ width: '10%' }} />
-              <col style={{ width: '10%' }} />
-            </colgroup>
+        <Card className="mt-6 border-slate-200 bg-white flex flex-col flex-1 min-h-0 overflow-hidden">
+          <div className="p-0 flex-1 min-h-0">
+            <Table ref={jobsTableRef} className="h-full">
+              <colgroup>
+                <col style={{ width: '20%' }} />
+                <col style={{ width: '20%' }} />
+                <col style={{ width: '15%' }} />
+                <col style={{ width: '15%' }} />
+                <col style={{ width: '10%' }} />
+                <col style={{ width: '10%' }} />
+                <col style={{ width: '10%' }} />
+              </colgroup>
             <TableHeader>
               <TableRow>
                 <TableHead className="cursor-pointer pl-6" style={{ minWidth: 120 }} onClick={() => {
@@ -938,7 +984,7 @@ function DashboardPage() {
               )}
               {!loading &&
                 !error &&
-                filteredJobs.map((job) => {
+                paginatedJobs.map((job) => {
                   return (
                     <TableRow
                       key={job.id}
@@ -1043,7 +1089,16 @@ function DashboardPage() {
                 }
                 )}
             </TableBody>
-          </Table>
+            </Table>
+          </div>
+          <CardFooter>
+            <Pagination
+              total={filteredJobs.length}
+              page={jobsEffectivePage}
+              pageSize={jobsPageSize}
+              onPageChange={setJobsPage}
+            />
+          </CardFooter>
         </Card>
       </>
     )
@@ -1306,7 +1361,9 @@ function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-slate-100">
-      <div className="mx-auto w-full px-6 py-10">{sectionContent}</div>
+      <div className="mx-auto w-full px-6 py-10 h-screen flex flex-col">
+        <div className="flex-1 min-h-0">{sectionContent}</div>
+      </div>
       <Dialog
         open={patientOpen}
         onOpenChange={(value) => {

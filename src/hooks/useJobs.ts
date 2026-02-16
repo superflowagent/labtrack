@@ -42,7 +42,7 @@ export const useJobs = () => {
   const addJob = useCallback(
     async (payload: Omit<NewJob, 'clinic_id'>) => {
       if (!clinicId) {
-        throw new Error('Clinica no disponible')
+        throw new Error('Clínica no disponible')
       }
       const created = await createJob({ ...payload, clinic_id: clinicId })
       setJobs((prev) => [created, ...prev])

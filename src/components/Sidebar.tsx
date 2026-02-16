@@ -34,7 +34,7 @@ export function Sidebar() {
         };
     }, []);
     return (
-        <aside className="flex h-screen flex-col border-r border-slate-200 bg-white px-3 py-6 shadow-sm min-w-[230px]">
+        <aside className="hidden md:flex h-screen flex-col border-r border-slate-200 bg-white px-3 py-6 shadow-sm w-[10vw] min-w-[230px]">
             <div className="mb-8 flex items-center" style={{ marginLeft: 4 }}>
                 <Logo />
             </div>
