@@ -2,6 +2,7 @@
 import { Navigate, Route, Routes, Outlet } from 'react-router-dom'
 import { LandingPage } from '@/pages/LandingPage'
 import { LoginPage } from '@/pages/LoginPage'
+import OgPreview from '@/pages/OgPreview'
 import DashboardPage from '@/pages/DashboardPage'
 import { Sidebar } from '@/components/Sidebar'
 // removed unused import (LaboratoriesPage / SpecialistsPage are routed from DashboardPage now)
@@ -22,6 +23,7 @@ const App = () => {
     <Routes>
       <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/og" element={<OgPreview />} />
       <Route path="/dashboard" element={<DashboardLayout />}>
         <Route index element={<DashboardPage />} />
         {/* Las rutas de laboratorios y especialistas se eliminan, ahora están en DashboardPage */}
