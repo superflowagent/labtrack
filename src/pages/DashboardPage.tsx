@@ -788,7 +788,7 @@ function DashboardPage() {
   let sectionContent: ReactNode = null
   if (section === 'trabajos') {
     sectionContent = (
-      <Card className="border-slate-200 bg-white/80 p-5 mb-6 flex flex-col flex-1 min-h-0 overflow-hidden">
+      <Card className="border-slate-200 bg-white/80 p-5 mb-0 flex flex-col flex-1 min-h-0 overflow-hidden">
         <div className="grid gap-4 sm:grid-cols-4">
           <div className="space-y-2">
             <Label>Buscar</Label>
@@ -946,7 +946,7 @@ function DashboardPage() {
                               onClick={(e) => e.stopPropagation()}
                               onKeyDown={(e) => e.stopPropagation()}
                             >
-                              {/* svg... */}
+                              <img src="/whatsapp.svg" alt="WhatsApp" className="w-4 h-4 pointer-events-none" />
                             </a>
                           ) : (
                             <button
@@ -958,7 +958,7 @@ function DashboardPage() {
                               className="ml-2 inline-flex items-center justify-center w-6 h-6 rounded-md bg-transparent border border-slate-100 text-slate-300 cursor-not-allowed opacity-60 filter grayscale"
                               title="Sin teléfono"
                             >
-                              {/* svg... */}
+                              <img src="/whatsapp.svg" alt="WhatsApp" className="w-4 h-4 opacity-60 filter grayscale pointer-events-none" />
                             </button>
                           )}
                         </div>
@@ -1007,8 +1007,8 @@ function DashboardPage() {
     );
   } else if (section === 'laboratorios') {
     sectionContent = (
-      <Card className="border-slate-200 bg-white/80 p-5 mb-6 flex flex-col flex-1 min-h-0 overflow-hidden">
-        <div className="flex flex-wrap items-center justify-end gap-4 mb-4">
+      <Card className="border-slate-200 bg-white/80 p-5 mb-0 flex flex-col flex-1 min-h-0 overflow-hidden">
+        <div className="flex flex-wrap items-center justify-end gap-4">
           <Dialog
             open={labOpen}
             onOpenChange={(value) => {
@@ -1105,8 +1105,8 @@ function DashboardPage() {
     )
   } else if (section === 'especialistas') {
     sectionContent = (
-      <Card className="border-slate-200 bg-white/80 p-5 mb-6 flex flex-col flex-1 min-h-0 overflow-hidden">
-        <div className="flex flex-wrap items-center justify-end gap-4 mb-4">
+      <Card className="border-slate-200 bg-white/80 p-5 mb-0 flex flex-col flex-1 min-h-0 overflow-hidden">
+        <div className="flex flex-wrap items-center justify-end gap-4">
           <Dialog
             open={specOpen}
             onOpenChange={(value) => {
@@ -1216,8 +1216,7 @@ function DashboardPage() {
     )
   } else if (section === 'pacientes') {
     sectionContent = (
-      <Card className="border-slate-200 bg-white/80 p-5 mb-6 flex flex-col flex-1 min-h-0 overflow-hidden">
-        <div className="mb-4" />
+      <Card className="border-slate-200 bg-white/80 p-5 mb-0 flex flex-col flex-1 min-h-0 overflow-hidden">
         <Filtros
           asCard={false}
           filters={patientsFilters}
