@@ -50,7 +50,6 @@ export function LaboratoriesTable({ labs, filter, onEdit }: { labs: Laboratory[]
         const container = tableEl.parentElement as HTMLElement | null;
         const measure = () => {
             const headerH = (tableEl.querySelector('thead') as HTMLElement | null)?.offsetHeight ?? 0;
-            const rowsInDOM = tableEl.querySelectorAll('tbody tr').length;
             // use fixed row height so measurement is deterministic
             const rowH = TABLE_ROW_HEIGHT;
 
@@ -202,7 +201,6 @@ export function SpecialistsTable({ specialists, filter, onEdit }: { specialists:
         const container = tableEl.parentElement as HTMLElement | null;
         const measure = () => {
             const headerH = (tableEl.querySelector('thead') as HTMLElement | null)?.offsetHeight ?? 0;
-            const rowsInDOM = tableEl.querySelectorAll('tbody tr').length;
             // use fixed row height so measurement is deterministic
             const rowH = TABLE_ROW_HEIGHT;
 
@@ -353,7 +351,6 @@ export function PatientsTable({ patients, filter, onEdit }: { patients: Patient[
         const container = tableEl.parentElement as HTMLElement | null;
         const measure = () => {
             const headerH = (tableEl.querySelector('thead') as HTMLElement | null)?.offsetHeight ?? 0;
-            const rowsInDOM = tableEl.querySelectorAll('tbody tr').length;
             // use fixed row height so measurement is deterministic
             const rowH = TABLE_ROW_HEIGHT;
 
