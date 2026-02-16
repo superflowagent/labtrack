@@ -143,6 +143,7 @@ export function LaboratoriesTable({ labs, filter, onEdit }: { labs: Laboratory[]
                         )}
                     </TableBody>
                 </Table>
+                </div>
                 <CardFooter>
                     <Pagination total={sortedLabs.length} page={effectivePage} pageSize={pageSize} onPageChange={setPage} />
                 </CardFooter>
@@ -292,6 +293,7 @@ export function SpecialistsTable({ specialists, filter, onEdit }: { specialists:
                         )}
                     </TableBody>
                 </Table>
+                </div>
                 <CardFooter>
                     <Pagination total={sortedSpecs.length} page={effectivePage} pageSize={pageSize} onPageChange={setPage} />
                 </CardFooter>
