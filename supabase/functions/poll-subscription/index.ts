@@ -2,9 +2,18 @@ export const config = {
     verifyJWT: true,
 }
 
+const corsHeaders = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
+
 Deno.serve(async (req: Request) => {
+    if (req.method === 'OPTIONS') {
+        return new Response('ok', { headers: corsHeaders })
+    }
+
     if (req.method !== 'POST') {
-        return new Response('Method not allowed', { status: 405 })
+        return new Response('Method not allowed', { status: 405, headers: corsHeaders })
     }
 
     try {
@@ -13,12 +22,12 @@ Deno.serve(async (req: Request) => {
         const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
 
         if (!STRIPE_SECRET_KEY || !SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-            return new Response(JSON.stringify({ error: 'Missing env vars' }), { status: 500 })
+            return new Response(JSON.stringify({ error: 'Missing env vars' }), { status: 500, headers: corsHeaders })
         }
 
         const { clinic_id } = await req.json()
         if (!clinic_id) {
-            return new Response(JSON.stringify({ error: 'Missing clinic_id' }), { status: 400 })
+            return new Response(JSON.stringify({ error: 'Missing clinic_id' }), { status: 400, headers: corsHeaders })
         }
 
         // Get clinic data including user_id to fetch user email
@@ -33,13 +42,13 @@ Deno.serve(async (req: Request) => {
         )
 
         if (!clinicRes.ok) {
-            return new Response(JSON.stringify({ error: 'Clinic not found' }), { status: 404 })
+            return new Response(JSON.stringify({ error: 'Clinic not found' }), { status: 404, headers: corsHeaders })
         }
 
         const clinics = await clinicRes.json()
         const clinic = clinics[0]
         if (clinic?.manual_premium) {
-            return new Response(JSON.stringify({ synced: true, status: 'manual', message: 'Manual premium enabled' }), { status: 200 })
+            return new Response(JSON.stringify({ synced: true, status: 'manual', message: 'Manual premium enabled' }), { status: 200, headers: corsHeaders })
         }
 
         let stripeCustId = clinic?.stripe_customer_id
@@ -91,7 +100,7 @@ Deno.serve(async (req: Request) => {
         }
 
         if (!stripeCustId) {
-            return new Response(JSON.stringify({ synced: false, message: 'No stripe customer found' }), { status: 200 })
+            return new Response(JSON.stringify({ synced: false, message: 'No stripe customer found' }), { status: 200, headers: corsHeaders })
         }
 
         // Query Stripe for active subscriptions
@@ -105,14 +114,14 @@ Deno.serve(async (req: Request) => {
         )
 
         if (!subsRes.ok) {
-            return new Response(JSON.stringify({ error: 'Stripe query failed' }), { status: subsRes.status })
+            return new Response(JSON.stringify({ error: 'Stripe query failed' }), { status: subsRes.status, headers: corsHeaders })
         }
 
         const { data: subs } = await subsRes.json()
         const activeSub = subs?.[0]
 
         if (!activeSub) {
-            return new Response(JSON.stringify({ synced: false, message: 'No active subscription' }), { status: 200 })
+            return new Response(JSON.stringify({ synced: false, message: 'No active subscription' }), { status: 200, headers: corsHeaders })
         }
 
         // Update clinic with active subscription
@@ -135,12 +144,12 @@ Deno.serve(async (req: Request) => {
 
         if (!updateRes.ok) {
             console.error('Failed to update clinic:', await updateRes.text())
-            return new Response(JSON.stringify({ error: 'Failed to update clinic' }), { status: 500 })
+            return new Response(JSON.stringify({ error: 'Failed to update clinic' }), { status: 500, headers: corsHeaders })
         }
 
-        return new Response(JSON.stringify({ synced: true, subscription_id: activeSub.id, status: activeSub.status }), { status: 200 })
+        return new Response(JSON.stringify({ synced: true, subscription_id: activeSub.id, status: activeSub.status }), { status: 200, headers: corsHeaders })
     } catch (err) {
         console.error('Error:', err)
-        return new Response(JSON.stringify({ error: String(err) }), { status: 500 })
+        return new Response(JSON.stringify({ error: String(err) }), { status: 500, headers: corsHeaders })
     }
 })

@@ -207,16 +207,6 @@ function DashboardPage() {
       // Sync subscription from Stripe and wait for it
       if (clinic?.id) {
         try {
-          const response = await fetch(`http://localhost:3001/poll/${clinic.id}`, { method: 'POST' })
-          if (response.ok) {
-            // Poll succeeded, refetch clinic data to get updated subscription status
-            clinic = await getClinicForUser()
-          }
-        } catch {
-          // Polling endpoint not available (expected in production)
-        }
-
-        try {
           await pollAndSyncSubscription(clinic?.id)
           // Fallback for production, refetch after
           clinic = await getClinicForUser()
