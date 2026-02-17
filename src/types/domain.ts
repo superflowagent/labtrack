@@ -18,6 +18,9 @@ export type Clinic = {
   stripe_customer_id: string | null
   is_premium: boolean
   trial_ends_at: string
+  stripe_trial_end?: string | null
+  manual_premium?: boolean
+  subscription_status?: 'active' | 'trialing' | 'none' | 'canceled' | null
 }
 
 export type Specialist = {

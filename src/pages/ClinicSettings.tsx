@@ -149,7 +149,7 @@ export default function ClinicSettings({ asCard = false }: { asCard?: boolean } 
                                         if (!clinic) return
                                         // Si no es premium, ir al payment link
                                         if (subscriptionStatus !== 'premium') {
-                                            const paymentLink = process.env.NODE_ENV === 'production'
+                                            const paymentLink = import.meta.env.MODE === 'production'
                                                 ? 'https://buy.stripe.com/dRm8wJ1fH9cCe7j72x4Vy01'
                                                 : 'https://buy.stripe.com/test_8x25kx8Xb5HugTSdyJ1oI08'
                                             const params = new URLSearchParams({
