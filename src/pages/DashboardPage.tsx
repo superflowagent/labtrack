@@ -196,7 +196,7 @@ function DashboardPage() {
 
   useEffect(() => {
     const initDashboard = async () => {
-      let clinic = await getClinicForUser()
+      const clinic = await getClinicForUser()
 
       if (clinic?.name) {
         window.clinicName = clinic.name
