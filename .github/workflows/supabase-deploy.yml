@@ -54,6 +54,11 @@ jobs:
           echo "Linking Supabase project: $SUPABASE_PROJECT_REF"
           supabase link --project-ref "$SUPABASE_PROJECT_REF"
 
+      - name: Repair migration history (cleanup phantom migrations)
+        run: |
+          echo "Repairing migration history..."
+          supabase migration repair --status reverted 20260214183000 20260214194500 20260215120000 20260215123000 20260215162952 20260215170000 20260215180000 20260215181000 20260216100000 20260216112000 || true
+
       - name: Apply DB migrations (supabase db push)
         id: db_push
         run: |
