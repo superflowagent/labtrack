@@ -248,20 +248,6 @@ function DashboardPage() {
     if (open) setPatientQuery('')
   }, [open])
 
-  const BillingBlocker = () => (
-    <div className="mx-auto flex max-w-2xl flex-col gap-4 rounded-xl border border-rose-200 bg-rose-50 p-6 text-rose-900">
-      <div>
-        <h2 className="text-lg font-semibold">Suscripción requerida</h2>
-        <p className="mt-2 text-sm text-rose-800">
-          Tu periodo de prueba ha finalizado. Necesitas una suscripción activa para seguir usando Labtrack.
-        </p>
-      </div>
-      <div className="flex gap-2">
-        <Button variant="secondary" onClick={() => setSection('ajustes')}>Ir a Ajustes</Button>
-      </div>
-    </div>
-  )
-
   useEffect(() => {
     // comprueba metadata del usuario y decide si mostrar onboarding
     let mounted = true
