@@ -14,18 +14,17 @@ export async function pollAndSyncSubscription(clinicId: string) {
             // Use local webhook server (faster, no JWT issues)
             const response = await fetch(`http://localhost:3001/poll/${clinicId}`, {
                 method: 'POST',
-            })
-
+        // Eliminado: toda la lógica de polling/sync Stripe
+        return null
             if (!response.ok) {
                 console.warn('Local polling failed, trying Edge Function...')
                 return fallbackEdgeFunctionPolling(clinicId)
             }
 
             const data = await response.json()
-
-            if (data?.synced) {
-                console.log('✅ Subscription synced:', data.subscription_id)
-                return {
+// Eliminado: toda la lógica de polling/sync Stripe
+// Eliminado: llamada a Edge Function
+// return null
                     subscription_id: data.subscription_id,
                     status: data.status,
                 }

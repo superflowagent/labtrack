@@ -39,7 +39,6 @@ import {
 import { useJobs } from '@/hooks/useJobs'
 import { supabase } from '@/services/supabase/client'
 import { getClinicForUser } from '@/services/supabase/clinic'
-import { pollAndSyncSubscription } from '@/services/supabase/subscription-poll'
 import {
   createLaboratory,
   createPatient,
@@ -204,16 +203,7 @@ function DashboardPage() {
         window.dispatchEvent(new Event('clinicNameChanged'))
       }
 
-      // Sync subscription from Stripe and wait for it
-      if (clinic?.id) {
-        try {
-          await pollAndSyncSubscription(clinic?.id)
-          // Fallback for production, refetch after
-          clinic = await getClinicForUser()
-        } catch {
-          // Fallback not available
-        }
-      }
+      // Ya no se hace sync de Stripe desde frontend. Solo se consulta clinics.
 
       // Now check billing status with updated clinic data
       const now = new Date()
