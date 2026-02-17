@@ -37,6 +37,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { useJobs } from '@/hooks/useJobs'
+import { supabase } from '@/services/supabase/client'
 import { getClinicForUser } from '@/services/supabase/clinic'
 import { pollAndSyncSubscription } from '@/services/supabase/subscription-poll'
 import {
