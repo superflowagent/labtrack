@@ -45,7 +45,7 @@ export async function pollAndSyncSubscription(clinicId: string) {
 
 async function fallbackEdgeFunctionPolling(clinicId: string) {
     try {
-        const { data, error } = await supabase.functions.invoke('poll-subscription2', {
+        const { data, error } = await supabase.functions.invoke('poll-subscription', {
             body: { clinic_id: clinicId },
         })
 
