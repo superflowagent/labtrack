@@ -1,6 +1,7 @@
--- Clean up incorrect schema from wrong project (applied by mistake via 20260217105745_remote_schema.sql)
+-- Cleanup: Drop all tables and functions from incorrect project schema only
+-- Baseline tables will remain intact if they exist
 
--- Drop all tables from the incorrect project
+-- Drop tables from incorrect project schema (if they exist)
 DROP TABLE IF EXISTS "public"."program_exercises" CASCADE;
 DROP TABLE IF EXISTS "public"."programs" CASCADE;
 DROP TABLE IF EXISTS "public"."profiles" CASCADE;
@@ -13,7 +14,7 @@ DROP TABLE IF EXISTS "public"."classes_templates" CASCADE;
 DROP TABLE IF EXISTS "public"."app_settings" CASCADE;
 DROP TABLE IF EXISTS "public"."anatomy" CASCADE;
 
--- Drop any functions from the incorrect project
+-- Drop all functions from incorrect project
 DROP FUNCTION IF EXISTS "public"."accept_invite"(p_token text) CASCADE;
 DROP FUNCTION IF EXISTS "public"."accept_invite_debug"(p_token text) CASCADE;
 DROP FUNCTION IF EXISTS "public"."accept_invite_http"(p_token text) CASCADE;
