@@ -54,6 +54,11 @@ jobs:
           echo "Linking Supabase project: $SUPABASE_PROJECT_REF"
           supabase link --project-ref "$SUPABASE_PROJECT_REF"
 
+      - name: Apply database migrations
+        run: |
+          echo "Applying migrations to remote database..."
+          supabase db push --include-all
+
       - name: Check for local Edge Functions
         id: check_functions
         run: |
