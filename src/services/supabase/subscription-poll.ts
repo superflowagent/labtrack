@@ -22,9 +22,7 @@ export async function pollAndSyncSubscription(clinicId: string) {
             }
 
             const data = await response.json()
-// Eliminado: toda la lógica de polling/sync Stripe
-// Eliminado: llamada a Edge Function
-// return null
+// Archivo eliminado: ya no se usa ningún polling ni función relacionada con Stripe.
                     subscription_id: data.subscription_id,
                     status: data.status,
                 }
