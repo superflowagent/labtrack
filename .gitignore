@@ -12,6 +12,9 @@ dist
 dist-ssr
 *.local
 
+# Test scripts with hardcoded secrets
+scripts/test-polling-flow.js
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
