@@ -1,6 +1,6 @@
 import { supabase } from './client'
 import { getClinicForUser } from './clinic'
-import type { Job, Laboratory, NewJob, Patient, Specialist, Clinic } from '@/types/domain' 
+import type { Job, Laboratory, NewJob, Patient, Specialist, Clinic } from '@/types/domain'
 
 export const getClinicIdForUser = async () => {
   const { data, error } = await supabase.auth.getUser()
@@ -21,10 +21,11 @@ const ensureActiveClinic = async () => {
   const clinic = await getClinicForUser()
   const now = new Date()
   const trialEnd = clinic?.stripe_trial_end ? new Date(clinic.stripe_trial_end) : null
-  const isActive = clinic?.subscription_status === 'active' || clinic?.subscription_status === 'trialing' || (trialEnd && trialEnd > now)
+  const trialStillActive = !!trialEnd && trialEnd > now
+  const isActive = !!clinic?.manual_premium || clinic?.subscription_status === 'active' || (clinic?.subscription_status === 'trialing' && trialStillActive) || trialStillActive
   if (!isActive) throw new Error('Se requiere una suscripción activa o periodo de prueba para realizar esta acción.')
   return clinic as Clinic
-} 
+}
 
 export const fetchJobs = async (clinicId: string) => {
   const { data, error } = await supabase
@@ -76,7 +77,7 @@ export const createJob = async (job: NewJob) => {
   const { data, error } = await supabase.from('jobs').insert(job).select('*').single()
   if (error) throw error
   return data as Job
-} 
+}
 
 export const createLaboratory = async (payload: { name: string; phone?: string | null; email?: string | null }) => {
   const clinic = await ensureActiveClinic()
@@ -89,7 +90,7 @@ export const createLaboratory = async (payload: { name: string; phone?: string |
 
   if (error) throw error
   return data as Laboratory
-} 
+}
 
 export const createSpecialist = async (payload: { name: string; specialty?: string | null; phone?: string | null; email?: string | null }) => {
   const clinic = await ensureActiveClinic()
@@ -102,7 +103,7 @@ export const createSpecialist = async (payload: { name: string; specialty?: stri
 
   if (error) throw error
   return data as Specialist
-} 
+}
 
 export const createPatient = async (payload: { name: string; phone?: string | null; email?: string | null; code?: string | null }) => {
   const clinic = await ensureActiveClinic()
@@ -115,7 +116,7 @@ export const createPatient = async (payload: { name: string; phone?: string | nu
 
   if (error) throw error
   return data as Patient
-} 
+}
 
 export const updateJob = async (id: string, payload: Partial<NewJob>) => {
   await ensureActiveClinic()
@@ -129,7 +130,7 @@ export const updateJob = async (id: string, payload: Partial<NewJob>) => {
 
   if (error) throw error
   return data as Job
-} 
+}
 
 export const deleteJob = async (id: string) => {
   await ensureActiveClinic()
@@ -142,7 +143,7 @@ export const deleteJob = async (id: string) => {
 
   if (error) throw error
   return data as Job
-} 
+}
 
 export const updateLaboratory = async (id: string, payload: { name: string; phone?: string | null; email?: string | null }) => {
   const clinic = await ensureActiveClinic()
@@ -157,7 +158,7 @@ export const updateLaboratory = async (id: string, payload: { name: string; phon
 
   if (error) throw error
   return data as Laboratory
-} 
+}
 
 export const updateSpecialist = async (id: string, payload: { name: string; specialty?: string | null; phone?: string | null; email?: string | null }) => {
   const clinic = await ensureActiveClinic()
@@ -172,7 +173,7 @@ export const updateSpecialist = async (id: string, payload: { name: string; spec
 
   if (error) throw error
   return data as Specialist
-} 
+}
 
 export const updatePatient = async (id: string, payload: { name: string; phone?: string | null; email?: string | null; code?: string | null }) => {
   const clinic = await ensureActiveClinic()
@@ -187,7 +188,7 @@ export const updatePatient = async (id: string, payload: { name: string; phone?:
 
   if (error) throw error
   return data as Patient
-} 
+}
 
 export const deleteLaboratory = async (id: string) => {
   const clinic = await ensureActiveClinic()
@@ -202,7 +203,7 @@ export const deleteLaboratory = async (id: string) => {
 
   if (error) throw error
   return data as Laboratory
-} 
+}
 
 export const deleteSpecialist = async (id: string) => {
   const clinic = await ensureActiveClinic()
@@ -217,7 +218,7 @@ export const deleteSpecialist = async (id: string) => {
 
   if (error) throw error
   return data as Specialist
-} 
+}
 
 export const deletePatient = async (id: string) => {
   const clinic = await ensureActiveClinic()

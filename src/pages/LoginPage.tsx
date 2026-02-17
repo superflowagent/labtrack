@@ -87,9 +87,13 @@ export const LoginPage = () => {
         if (signUpError) throw signUpError
         if (!data.user) throw new Error('No se pudo crear el usuario')
 
+        // create clinic and start a local 30-day trial immediately (Stripe remains source-of-truth for paid subs)
+        const trialEnd = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
         const { error: clinicError } = await supabase.from('clinics').insert({
           name: clinicName,
           user_id: data.user.id,
+          subscription_status: 'trialing',
+          stripe_trial_end: trialEnd,
         })
         if (clinicError) throw clinicError
       } else {

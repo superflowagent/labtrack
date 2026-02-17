@@ -73,7 +73,7 @@ jobs:
         if: steps.check_functions.outputs.functions_present == 'true'
         run: |
           echo "Deploying Edge Functions to Supabase project: $SUPABASE_PROJECT_REF"
-          supabase functions deploy --no-verify-jwt --prune
+          supabase functions deploy --prune
 
       - name: List deployed functions (verification)
         if: steps.check_functions.outputs.functions_present == 'true'

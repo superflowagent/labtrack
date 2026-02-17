@@ -7,7 +7,6 @@ import {
     Settings,
 } from "lucide-react"
 import { useEffect, useState } from "react"
-import { useNavigate } from 'react-router-dom'  
 
 import { signOut } from "@/services/supabase/auth"
 
@@ -15,19 +14,19 @@ import { Logo } from "./Logo"
 
 const navItems: {
     label: string
-    tab: "trabajos" | "laboratorios" | "especialistas" | "pacientes"
+    tab: "trabajos" | "laboratorios" | "especialistas" | "pacientes" | "ajustes"
     icon: React.ComponentType<{ className?: string }>
 }[] = [
         { label: "Trabajos", tab: "trabajos", icon: LayoutList },
         { label: "Laboratorios", tab: "laboratorios", icon: FlaskConical },
         { label: "Especialistas", tab: "especialistas", icon: Stethoscope },
         { label: "Pacientes", tab: "pacientes", icon: UsersRound },
+        { label: "Ajustes", tab: "ajustes", icon: Settings },
     ]
 
 export function Sidebar() {
-    const navigate = useNavigate()
     const [clinicName, setClinicName] = useState<string | null>(null);
-    const [activeSection, setActiveSection] = useState<'trabajos' | 'laboratorios' | 'especialistas' | 'pacientes'>(window.dashboardSection ?? 'trabajos')
+    const [activeSection, setActiveSection] = useState<'trabajos' | 'laboratorios' | 'especialistas' | 'pacientes' | 'ajustes'>(window.dashboardSection ?? 'trabajos')
 
     useEffect(() => {
         // Escuchar cambios en window.clinicName mediante un evento personalizado
@@ -56,30 +55,22 @@ export function Sidebar() {
                     const isActive = activeSection === tab
                     return (
                         <div key={tab} className="flex flex-col">
-                          <button
-                              type="button"
-                              onClick={() => {
-                                  setActiveSection(tab)
-                                  if (typeof window.setDashboardSection === 'function') window.setDashboardSection(tab)
-                              }}
-                              aria-current={isActive ? 'page' : undefined}
-                              className={`relative flex items-center gap-3 rounded-lg px-3 py-2 text-base font-medium transform transition duration-150 ease-out active:scale-95 active:translate-y-px ${isActive ? 'border-l-4 border-b-2 border-teal-600 bg-transparent text-teal-700' : 'hover:bg-teal-50 hover:text-teal-700 text-slate-700'}`}
-                              style={isActive ? { boxShadow: '0 -6px 12px rgba(16,185,129,0.08)' } : undefined}
-                          >
-                              <Icon className={`h-5 w-5 ${isActive ? 'text-teal-600' : ''}`} />
-                              {label}
-                          </button>
-                          {tab === 'pacientes' && (
-                            <div className="ml-6 mt-1">
-                              <button
-                                onClick={() => navigate('/dashboard/patients/ajustes')}
-                                className="inline-flex items-center gap-2 rounded-md px-2 py-1 text-sm text-slate-500 hover:bg-slate-50 hover:text-slate-700"
-                              ><Settings className="h-4 w-4 text-slate-500" />Ajustes</button>
-                            </div>
-                          )}
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setActiveSection(tab)
+                                    if (typeof window.setDashboardSection === 'function') window.setDashboardSection(tab)
+                                }}
+                                aria-current={isActive ? 'page' : undefined}
+                                className={`relative flex items-center gap-3 rounded-lg px-3 py-2 text-base font-medium transform transition duration-150 ease-out active:scale-95 active:translate-y-px ${isActive ? 'border-l-4 border-b-2 border-teal-600 bg-transparent text-teal-700' : 'hover:bg-teal-50 hover:text-teal-700 text-slate-700'}`}
+                                style={isActive ? { boxShadow: '0 -6px 12px rgba(16,185,129,0.08)' } : undefined}
+                            >
+                                <Icon className={`h-5 w-5 ${isActive ? 'text-teal-600' : ''}`} />
+                                {label}
+                            </button>
                         </div>
                     )
-                })} 
+                })}
             </nav>
             <div className="flex items-center mt-8 mb-2 gap-3">
                 <button

@@ -1,8 +1,8 @@
 declare global {
     interface Window {
         clinicName?: string;
-        dashboardSection?: 'trabajos' | 'laboratorios' | 'especialistas' | 'pacientes';
-        setDashboardSection?: (section: 'trabajos' | 'laboratorios' | 'especialistas' | 'pacientes') => void;
+        dashboardSection?: 'trabajos' | 'laboratorios' | 'especialistas' | 'pacientes' | 'ajustes';
+        setDashboardSection?: (section: 'trabajos' | 'laboratorios' | 'especialistas' | 'pacientes' | 'ajustes') => void;
     }
 }
 

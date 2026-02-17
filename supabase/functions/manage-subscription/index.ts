@@ -1,50 +1,81 @@
-/* eslint-disable @typescript-eslint/ban-ts-comment */
-// @ts-nocheck
-import Stripe from 'stripe'
+import Stripe from 'https://esm.sh/stripe@14.21.0?target=deno'
 
-const STRIPE_SECRET_KEY = Deno.env.get('STRIPE_SECRET_KEY')
-const SUPABASE_URL = Deno.env.get('SUPABASE_URL')
-const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+export const config = {
+    verifyJWT: true,
+}
 
-if (!STRIPE_SECRET_KEY) throw new Error('Missing STRIPE_SECRET_KEY')
-if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) throw new Error('Missing Supabase envs')
+type DenoRuntime = {
+    env: {
+        get(key: string): string | undefined
+    }
+    serve: (handler: (req: Request) => Response | Promise<Response>) => void
+}
 
-const stripe = new Stripe(STRIPE_SECRET_KEY, { apiVersion: '2022-11-15' })
+const denoRuntime = (globalThis as unknown as { Deno: DenoRuntime }).Deno
 
-addEventListener('fetch', (event) => {
-    event.respondWith(handle(event.request))
-})
+const json = (data: unknown, status = 200) =>
+    new Response(JSON.stringify(data), {
+        status,
+        headers: { 'Content-Type': 'application/json' },
+    })
 
-async function handle(req: Request) {
-    if (req.method !== 'POST') return new Response('Method not allowed', { status: 405 })
+denoRuntime.serve(async (req: Request) => {
+    if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405)
+
     try {
-        const { subscription_id, action } = await req.json()
-        if (!subscription_id || !action) return new Response(JSON.stringify({ error: 'subscription_id and action required' }), { status: 400 })
+        const STRIPE_SECRET_KEY = denoRuntime.env.get('STRIPE_SECRET_KEY')
+        const SUPABASE_URL = denoRuntime.env.get('SUPABASE_URL')
+        const SUPABASE_SERVICE_ROLE_KEY = denoRuntime.env.get('SUPABASE_SERVICE_ROLE_KEY')
 
-        let updated: Stripe.Response<Stripe.Subscription>
-        if (action === 'cancel') {
-            updated = await stripe.subscriptions.update(subscription_id, { cancel_at_period_end: true })
-        } else if (action === 'reactivate') {
-            // reactivate by setting cancel_at_period_end to false
-            updated = await stripe.subscriptions.update(subscription_id, { cancel_at_period_end: false })
-        } else {
-            return new Response(JSON.stringify({ error: 'unknown action' }), { status: 400 })
+        if (!STRIPE_SECRET_KEY || !SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+            return json({ error: 'Missing env vars' }, 500)
         }
 
-        // update clinics table by stripe_subscription_id
-        await fetch(`${SUPABASE_URL}/rest/v1/clinics?stripe_subscription_id=eq.${subscription_id}`, {
-            method: 'PATCH',
-            headers: {
-                Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-                'Content-Type': 'application/json',
-                Prefer: 'return=representation',
-            },
-            body: JSON.stringify({ subscription_status: updated.status }),
+        const { clinic_id, return_url } = await req.json().catch(() => ({}))
+        const returnUrl = return_url || req.headers.get('Origin') || 'http://localhost:5173'
+
+        if (!clinic_id) {
+            return json({ error: 'Missing clinic_id' }, 400)
+        }
+
+        const clinicRes = await fetch(
+            `${SUPABASE_URL}/rest/v1/clinics?id=eq.${clinic_id}&select=id,stripe_customer_id,manual_premium`,
+            {
+                headers: {
+                    Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+                    'Content-Type': 'application/json',
+                    apikey: SUPABASE_SERVICE_ROLE_KEY,
+                },
+            }
+        )
+
+        if (!clinicRes.ok) return json({ error: 'Clinic not found' }, 404)
+
+        const clinics = await clinicRes.json()
+        const clinic = clinics[0]
+        if (!clinic) return json({ error: 'Clinic not found' }, 404)
+
+        if (clinic.manual_premium) {
+            return json({ error: 'Manual premium enabled' }, 400)
+        }
+
+        if (!clinic.stripe_customer_id) {
+            return json({ error: 'No Stripe customer found' }, 400)
+        }
+
+        const stripe = new Stripe(STRIPE_SECRET_KEY, {
+            apiVersion: '2023-10-16',
+            httpClient: Stripe.createFetchHttpClient(),
         })
 
-        return new Response(JSON.stringify({ status: updated.status }), { status: 200 })
-    } catch (err: unknown) {
-        const message = err instanceof Error ? err.message : String(err)
-        return new Response(JSON.stringify({ error: message }), { status: 500 })
+        const portal = await stripe.billingPortal.sessions.create({
+            customer: clinic.stripe_customer_id,
+            return_url: returnUrl,
+        })
+
+        return json({ url: portal.url })
+    } catch (err) {
+        return json({ error: String(err) }, 500)
     }
-} 
+})
+

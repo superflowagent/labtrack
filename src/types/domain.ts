@@ -18,10 +18,9 @@ export type Clinic = {
   stripe_customer_id?: string | null
   stripe_subscription_id?: string | null
   subscription_status?: string | null
-  price_id?: string | null
-  subscription_current_period_end?: string | null
   stripe_trial_end?: string | null
-} 
+  manual_premium?: boolean | null
+}
 
 export type Specialist = {
   id: string

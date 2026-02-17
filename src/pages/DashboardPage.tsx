@@ -38,7 +38,7 @@ import {
 } from '@/components/ui/table'
 import { useJobs } from '@/hooks/useJobs'
 import { getClinicForUser } from '@/services/supabase/clinic'
-import { supabase } from '@/services/supabase/client'
+import { pollAndSyncSubscription } from '@/services/supabase/subscription-poll'
 import {
   createLaboratory,
   createPatient,
@@ -184,34 +184,59 @@ function DashboardPage() {
   }, [setSection])
 
   useEffect(() => {
-    const goToSettings = () => { setSection('ajustes'); if (typeof window.setDashboardSection === 'function') window.setDashboardSection('ajustes') }
-    window.addEventListener('navigateToSettings', goToSettings)
-    return () => window.removeEventListener('navigateToSettings', goToSettings)
-  }, [setSection])
-
-  useEffect(() => {
     // keep the global dashboardSection in sync and notify listeners
     window.dashboardSection = section
     window.dispatchEvent(new Event('dashboardSectionChanged'))
   }, [section])
 
-  const [billingModalOpen, setBillingModalOpen] = useState(false)
+  const [billingBlocked, setBillingBlocked] = useState(false)
+  const [billingChecked, setBillingChecked] = useState(false)
+
+
 
   useEffect(() => {
-    getClinicForUser()
-      .then((clinic) => {
-        if (clinic?.name) {
-          window.clinicName = clinic.name
-          window.dispatchEvent(new Event('clinicNameChanged'))
+    const initDashboard = async () => {
+      let clinic = await getClinicForUser()
+
+      if (clinic?.name) {
+        window.clinicName = clinic.name
+        window.dispatchEvent(new Event('clinicNameChanged'))
+      }
+
+      // Sync subscription from Stripe and wait for it
+      if (clinic?.id) {
+        try {
+          const response = await fetch(`http://localhost:3001/poll/${clinic.id}`, { method: 'POST' })
+          if (response.ok) {
+            // Poll succeeded, refetch clinic data to get updated subscription status
+            clinic = await getClinicForUser()
+          }
+        } catch {
+          // Polling endpoint not available (expected in production)
         }
-        const now = new Date()
-        const trialEnd = clinic?.stripe_trial_end ? new Date(clinic.stripe_trial_end) : null
-        const isActive = clinic?.subscription_status === 'active' || clinic?.subscription_status === 'trialing' || (trialEnd && trialEnd > now)
-        setBillingModalOpen(!isActive)
-      })
-      .catch(() => {
-        // ignore
-      })
+
+        try {
+          await pollAndSyncSubscription(clinic?.id)
+          // Fallback for production, refetch after
+          clinic = await getClinicForUser()
+        } catch {
+          // Fallback not available
+        }
+      }
+
+      // Now check billing status with updated clinic data
+      const now = new Date()
+      const trialEnd = clinic?.stripe_trial_end ? new Date(clinic.stripe_trial_end) : null
+      const trialStillActive = !!trialEnd && trialEnd > now
+      const isActive = !!clinic?.manual_premium || clinic?.subscription_status === 'active' || (clinic?.subscription_status === 'trialing' && trialStillActive) || trialStillActive
+      setBillingBlocked(!isActive)
+      setBillingChecked(true)
+    }
+
+    initDashboard().catch(() => {
+      // ignore
+      setBillingChecked(true)
+    })
   }, [])
 
   const defaultFilters = {
@@ -258,21 +283,18 @@ function DashboardPage() {
     if (open) setPatientQuery('')
   }, [open])
 
-  // Billing modal (block usage if subscription expired)
-  const BillingModal = () => (
-    <Dialog open={billingModalOpen} onOpenChange={setBillingModalOpen}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Suscripción requerida</DialogTitle>
-          <DialogDescription>
-            Necesitas una suscripción activa para seguir usando Labtrack. Por favor, entra en <strong>Ajustes</strong> para iniciar o reactivar tu suscripción.
-          </DialogDescription>
-          <div className="mt-4 flex gap-2">
-            <Button variant="secondary" onClick={() => window.dispatchEvent(new CustomEvent('navigateToSettings'))}>Ir a Ajustes</Button>
-          </div>
-        </DialogHeader>
-      </DialogContent>
-    </Dialog>
+  const BillingBlocker = () => (
+    <div className="mx-auto flex max-w-2xl flex-col gap-4 rounded-xl border border-rose-200 bg-rose-50 p-6 text-rose-900">
+      <div>
+        <h2 className="text-lg font-semibold">Suscripción requerida</h2>
+        <p className="mt-2 text-sm text-rose-800">
+          Tu periodo de prueba ha finalizado. Necesitas una suscripción activa para seguir usando Labtrack.
+        </p>
+      </div>
+      <div className="flex gap-2">
+        <Button variant="secondary" onClick={() => setSection('ajustes')}>Ir a Ajustes</Button>
+      </div>
+    </div>
   )
 
   useEffect(() => {
@@ -481,11 +503,11 @@ function DashboardPage() {
 
   const maxElapsedDays = useMemo(() => {
     if (section !== 'trabajos') return 0
-    const values = jobsForElapsed
+    const values = paginatedJobs
       .map(({ job }) => (job.order_date ? differenceInCalendarDays(now, parseISO(job.order_date)) : -1))
       .filter((d) => d >= 0)
     return values.length ? Math.max(...values) : 0
-  }, [jobsForElapsed, now, section])
+  }, [paginatedJobs, now, section])
 
   const visibleJobs = useMemo(() => {
     if (section !== 'trabajos') return []
@@ -503,8 +525,8 @@ function DashboardPage() {
     })
   }, [paginatedJobs, formatter, section])
 
-  const sliderMax = maxElapsedDays > 0 ? maxElapsedDays : 365
-  const isElapsedDisabled = section !== 'trabajos' || jobsForElapsed.length === 0
+  const sliderMax = Math.max(0, maxElapsedDays)
+  const isElapsedDisabled = section !== 'trabajos' || paginatedJobs.length === 0
 
   // if available max shrinks, clamp the current filter value so the slider/value stay consistent
   useEffect(() => {
@@ -1248,63 +1270,68 @@ function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-slate-100">
-      <BillingModal />
       <div className="mx-auto w-full px-6 pt-4 pb-6 h-screen flex flex-col">
-        <SectionHeader
-          icon={
-            section === 'trabajos' ? <ClipboardPlus className="h-5 w-5 text-slate-500" /> :
-              section === 'laboratorios' ? <FlaskConical className="h-5 w-5 text-slate-500" /> :
-                section === 'especialistas' ? <Stethoscope className="h-5 w-5 text-slate-500" /> :
-                  <UserRound className="h-5 w-5 text-slate-500" />
-          }
-          title={sectionTitle}
-          newButton={(() => {
-            if (section === 'trabajos') {
-              return (
-                <Button
-                  ref={newJobButtonRef}
-                  className={`bg-teal-600 text-white hover:bg-teal-500 ${showNewJobOnboarding ? 'relative z-50 onboarding-cta' : ''}`}
-                  onClick={() => {
-                    setEditingJobId(null)
-                    setForm(getEmptyJobForm())
-                    setOrderDateInteracted(false)
-                    setOpen(true)
-                    if (showNewJobOnboarding) {
-                      setShowNewJobOnboarding(false)
-                      void markNewJobSeen()
-                    }
-                  }}
-                >
-                  <ClipboardPlus className="mr-2 h-4 w-4" /> Nuevo trabajo
-                </Button>
-              )
-            }
-            if (section === 'laboratorios') {
-              return (
-                <Button className="bg-teal-600 text-white hover:bg-teal-500" onClick={() => { setEditingLabId(null); setLabForm({ name: '', phone: '', email: '' }); setLabOpen(true); }}>
-                  <FlaskConical className="mr-2 h-4 w-4" /> Nuevo laboratorio
-                </Button>
-              )
-            }
-            if (section === 'especialistas') {
-              return (
-                <Button className="bg-teal-600 text-white hover:bg-teal-500" onClick={() => { setEditingSpecId(null); setSpecForm({ name: '', specialty: '', phone: '', email: '' }); setSpecOpen(true); }}>
-                  <Stethoscope className="mr-2 h-4 w-4" /> Nuevo especialista
-                </Button>
-              )
-            }
-            if (section === 'pacientes') {
-              return (
-                <Button className="bg-teal-600 text-white hover:bg-teal-500" onClick={() => { setEditingPatientId(null); setPatientForm({ name: '', phone: '', email: '', code: '' }); setPatientOpen(true); setPendingPatientSelection(false); }}>
-                  <UserRound className="mr-2 h-4 w-4" /> Nuevo paciente
-                </Button>
-              )
-            }
-            return null
-          })()}
-        />
+        {billingChecked && billingBlocked && section !== 'ajustes' ? (
+          <BillingBlocker />
+        ) : (
+          <>
+            <SectionHeader
+              icon={
+                section === 'trabajos' ? <ClipboardPlus className="h-5 w-5 text-slate-500" /> :
+                  section === 'laboratorios' ? <FlaskConical className="h-5 w-5 text-slate-500" /> :
+                    section === 'especialistas' ? <Stethoscope className="h-5 w-5 text-slate-500" /> :
+                      <UserRound className="h-5 w-5 text-slate-500" />
+              }
+              title={sectionTitle}
+              newButton={(() => {
+                if (section === 'trabajos') {
+                  return (
+                    <Button
+                      ref={newJobButtonRef}
+                      className={`bg-teal-600 text-white hover:bg-teal-500 ${showNewJobOnboarding ? 'relative z-50 onboarding-cta' : ''}`}
+                      onClick={() => {
+                        setEditingJobId(null)
+                        setForm(getEmptyJobForm())
+                        setOrderDateInteracted(false)
+                        setOpen(true)
+                        if (showNewJobOnboarding) {
+                          setShowNewJobOnboarding(false)
+                          void markNewJobSeen()
+                        }
+                      }}
+                    >
+                      <ClipboardPlus className="mr-2 h-4 w-4" /> Nuevo trabajo
+                    </Button>
+                  )
+                }
+                if (section === 'laboratorios') {
+                  return (
+                    <Button className="bg-teal-600 text-white hover:bg-teal-500" onClick={() => { setEditingLabId(null); setLabForm({ name: '', phone: '', email: '' }); setLabOpen(true); }}>
+                      <FlaskConical className="mr-2 h-4 w-4" /> Nuevo laboratorio
+                    </Button>
+                  )
+                }
+                if (section === 'especialistas') {
+                  return (
+                    <Button className="bg-teal-600 text-white hover:bg-teal-500" onClick={() => { setEditingSpecId(null); setSpecForm({ name: '', specialty: '', phone: '', email: '' }); setSpecOpen(true); }}>
+                      <Stethoscope className="mr-2 h-4 w-4" /> Nuevo especialista
+                    </Button>
+                  )
+                }
+                if (section === 'pacientes') {
+                  return (
+                    <Button className="bg-teal-600 text-white hover:bg-teal-500" onClick={() => { setEditingPatientId(null); setPatientForm({ name: '', phone: '', email: '', code: '' }); setPatientOpen(true); setPendingPatientSelection(false); }}>
+                      <UserRound className="mr-2 h-4 w-4" /> Nuevo paciente
+                    </Button>
+                  )
+                }
+                return null
+              })()}
+            />
 
-        <div className="flex-1 min-h-0 flex flex-col">{sectionContent}</div>
+            <div className="flex-1 min-h-0 flex flex-col">{sectionContent}</div>
+          </>
+        )}
       </div>
 
       {showNewJobOnboarding && spotRect && (

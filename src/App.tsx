@@ -4,7 +4,6 @@ import { LandingPage } from '@/pages/LandingPage'
 import { LoginPage } from '@/pages/LoginPage'
 import OgPreview from '@/pages/OgPreview'
 import DashboardPage from '@/pages/DashboardPage'
-import ClinicSettings from '@/pages/ClinicSettings'
 import { Sidebar } from '@/components/Sidebar'
 
 
@@ -26,9 +25,8 @@ const App = () => {
       <Route path="/og" element={<OgPreview />} />
       <Route path="/dashboard" element={<DashboardLayout />}>
         <Route index element={<DashboardPage />} />
-        {/* Las rutas de laboratorios y especialistas se eliminan, ahora están en DashboardPage */}
-        <Route path="patients" element={<div className="p-8 text-2xl font-semibold text-slate-700">Pacientes (próximamente)</div>} />
-        <Route path="patients/ajustes" element={<ClinicSettings />} />
+        <Route path="patients" element={<Navigate to="/dashboard" replace />} />
+        <Route path="patients/ajustes" element={<Navigate to="/dashboard" replace />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
