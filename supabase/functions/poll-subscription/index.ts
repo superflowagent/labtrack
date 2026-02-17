@@ -1,6 +1,4 @@
-export const config = {
-    verifyJWT: true,
-}
+import { createClient } from 'jsr:@supabase/supabase-js@2'
 
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
@@ -20,9 +18,26 @@ Deno.serve(async (req: Request) => {
         const STRIPE_SECRET_KEY = Deno.env.get('STRIPE_SECRET_KEY')
         const SUPABASE_URL = Deno.env.get('SUPABASE_URL')
         const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+        const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')
 
-        if (!STRIPE_SECRET_KEY || !SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+        if (!STRIPE_SECRET_KEY || !SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY || !SUPABASE_ANON_KEY) {
             return new Response(JSON.stringify({ error: 'Missing env vars' }), { status: 500, headers: corsHeaders })
+        }
+
+        // Verify JWT manually by creating a client with the auth header
+        const authHeader = req.headers.get('Authorization')
+        if (!authHeader) {
+            return new Response(JSON.stringify({ error: 'Missing authorization header' }), { status: 401, headers: corsHeaders })
+        }
+
+        const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+            global: { headers: { Authorization: authHeader } },
+        })
+
+        const { data: { user }, error: authError } = await supabaseClient.auth.getUser()
+
+        if (authError || !user) {
+            return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: corsHeaders })
         }
 
         const { clinic_id } = await req.json()
@@ -30,7 +45,7 @@ Deno.serve(async (req: Request) => {
             return new Response(JSON.stringify({ error: 'Missing clinic_id' }), { status: 400, headers: corsHeaders })
         }
 
-        // Get clinic data including user_id to fetch user email
+        // Get clinic data including user_id to verify ownership
         const clinicRes = await fetch(
             `${SUPABASE_URL}/rest/v1/clinics?id=eq.${clinic_id}&select=stripe_customer_id,user_id,manual_premium`,
             {
@@ -47,6 +62,15 @@ Deno.serve(async (req: Request) => {
 
         const clinics = await clinicRes.json()
         const clinic = clinics[0]
+
+        if (!clinic) {
+            return new Response(JSON.stringify({ error: 'Clinic not found' }), { status: 404, headers: corsHeaders })
+        }
+
+        // Security: Verify that the clinic belongs to the authenticated user
+        if (clinic.user_id !== user.id) {
+            return new Response(JSON.stringify({ error: 'Forbidden: clinic does not belong to user' }), { status: 403, headers: corsHeaders })
+        }
         if (clinic?.manual_premium) {
             return new Response(JSON.stringify({ synced: true, status: 'manual', message: 'Manual premium enabled' }), { status: 200, headers: corsHeaders })
         }
