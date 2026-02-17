@@ -64,10 +64,11 @@ jobs:
           echo "Applying migrations to remote database..."
           echo "y" | supabase db push || echo "No new migrations to apply or error occurred"
 
+
       - name: Check for local Edge Functions
         id: check_functions
         run: |
-          if [ -d "supabase/functions" ] && [ "$(ls -A supabase/functions)" ]; then
+          if [ -d "supabase/functions" ] && [ "$(find supabase/functions -type f -name '*.ts' -o -name '*.js' -o -name '*.tsc' | grep -v '^\.gitkeep$' | head -n 1)" ]; then
             echo "functions_present=true" >> $GITHUB_OUTPUT
           else
             echo "functions_present=false" >> $GITHUB_OUTPUT
