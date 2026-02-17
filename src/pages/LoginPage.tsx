@@ -95,7 +95,10 @@ export const LoginPage = () => {
           subscription_status: 'trialing',
           stripe_trial_end: trialEnd,
         })
-        if (clinicError) throw clinicError
+        if (clinicError) {
+          console.error('Clinic creation error:', clinicError)
+          throw new Error(`Error creando clínica: ${clinicError.message} (${clinicError.code})`)
+        }
       } else {
         const { error: signInError } = await supabase.auth.signInWithPassword({
           email,
