@@ -785,6 +785,7 @@ function DashboardPage() {
               placeholder="Buscar por paciente o trabajo"
             />
           </div>
+          <div className="space-y-2">
             <Label>Estado</Label>
             <Select value={filters.estado} onValueChange={(value) => setFilters((prev) => ({ ...prev, estado: value }))}>
               <SelectTrigger className={filters.estado !== 'all' ? getStatusTextClass(filters.estado) : ''}>
@@ -989,7 +990,7 @@ function DashboardPage() {
             onPageChange={setJobsPage}
           />
         </CardFooter>
-      </Card >
+      </Card>
     );
   } else if (section === 'laboratorios') {
     sectionContent = (
@@ -1293,7 +1294,6 @@ function DashboardPage() {
 
           <div className="flex-1 min-h-0 flex flex-col">{sectionContent}</div>
         </>
-        )}
       </div>
 
       {showNewJobOnboarding && spotRect && (
