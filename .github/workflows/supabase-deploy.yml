@@ -57,7 +57,7 @@ jobs:
       - name: Apply database migrations
         run: |
           echo "Applying migrations to remote database..."
-          supabase db push --include-all
+          echo "y" | supabase db push
 
       - name: Check for local Edge Functions
         id: check_functions
