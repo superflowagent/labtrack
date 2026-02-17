@@ -1,17 +1,13 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Button } from '@/components/ui/button'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { getClinicForUser, updateClinic } from '@/services/supabase/clinic'
-import { openBillingPortal, openPaymentLink } from '@/services/billing'
-import { supabase } from '@/services/supabase/client'
-import { formatDistanceToNowStrict, differenceInCalendarDays } from 'date-fns'
 import type { Clinic } from '@/types/domain'
 
 export default function ClinicSettings({ asCard = false }: { asCard?: boolean } = {}) {
     const [clinic, setClinic] = useState<Clinic | null>(null)
-    const [userEmail, setUserEmail] = useState<string | null>(null)
+    // Eliminado: lógica de email y Stripe
     const [name, setName] = useState('')
     const [nameSaving, setNameSaving] = useState(false)
     const [nameSaveStatus, setNameSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
@@ -20,15 +16,6 @@ export default function ClinicSettings({ asCard = false }: { asCard?: boolean } 
 
     useEffect(() => {
         let mounted = true
-
-        // Get user email
-        supabase.auth.getUser().then(({ data: { user } }) => {
-            if (mounted && user) {
-                setUserEmail(user.email || null)
-            }
-        }).catch(console.error)
-
-        // Get clinic data
         getClinicForUser()
             .then((c) => {
                 if (!mounted) return
@@ -71,35 +58,10 @@ export default function ClinicSettings({ asCard = false }: { asCard?: boolean } 
         }
     }, [clinic, name])
 
-    const handleStartCheckout = async () => {
-        if (!clinic?.id) {
-            setError('No hay clínica asociada para activar la suscripción')
-            return
-        }
+    // Eliminado: handleStartCheckout y lógica de Stripe
 
-        if (clinic.manual_premium) {
-            setError('Suscripción manual activa. No hay portal de Stripe para gestionarla.')
-            return
-        }
-
-        try {
-            if (isActive) {
-                await openBillingPortal(clinic.id)
-                return
-            }
-
-            await openPaymentLink(clinic.id, userEmail || undefined)
-        } catch (err: unknown) {
-            const msg = err instanceof Error ? err.message : String(err)
-            setError(msg)
-        }
-    }
-
-    const now = new Date()
-    const trialEnd = clinic?.stripe_trial_end ? new Date(clinic.stripe_trial_end) : null
-    const trialDaysLeft = trialEnd ? differenceInCalendarDays(trialEnd, now) : null
-    const isTrialActive = !!trialEnd && trialEnd > now
-    const isActive = !!clinic?.manual_premium || clinic?.subscription_status === 'active'
+    // Eliminado: now
+    // Eliminado: trialEnd, trialDaysLeft, isTrialActive, isActive
 
     // autosave: debounce + flush on blur
     useEffect(() => {
@@ -126,7 +88,6 @@ export default function ClinicSettings({ asCard = false }: { asCard?: boolean } 
                     </CardHeader>
                 )}
                 {error && <div className="mb-4 text-sm text-red-600">{error}</div>}
-
                 <div className="max-w-2xl space-y-6">
                     {/* Clinic info (nombre) */}
                     <Card className="p-6">
@@ -146,42 +107,6 @@ export default function ClinicSettings({ asCard = false }: { asCard?: boolean } 
                                 </div>
                             </div>
                         </div>
-                    </Card>
-
-                    {/* Subscription controls */}
-                    <Card className="p-6">
-                        <div className="mb-4">
-                            <Label className="mb-2">Estado de la suscripción</Label>
-                        </div>
-
-                        {isActive && (
-                            <div className="mb-4 rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">
-                                Suscripción activa
-                            </div>
-                        )}
-
-                        {!isActive && isTrialActive && (
-                            <div className="mb-4 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
-                                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                                    <div>
-                                        Te quedan {trialDaysLeft !== null ? `${Math.max(trialDaysLeft, 0)} días` : formatDistanceToNowStrict(trialEnd!, { addSuffix: true })} de prueba gratis.
-                                    </div>
-                                    <Button variant="secondary" onClick={handleStartCheckout}>Gestionar suscripción</Button>
-                                </div>
-                            </div>
-                        )}
-
-                        {!isActive && !isTrialActive && (
-                            <div className="mb-4 rounded-md border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">
-                                El periodo de prueba ha finalizado. Activa una suscripción para seguir usando Labtrack.
-                            </div>
-                        )}
-
-                        {!isTrialActive && (
-                            <div className="mt-6 flex w-full flex-wrap items-start justify-start gap-2">
-                                <Button variant="secondary" onClick={handleStartCheckout}>Gestionar suscripción</Button>
-                            </div>
-                        )}
                     </Card>
                 </div>
             </Card>
