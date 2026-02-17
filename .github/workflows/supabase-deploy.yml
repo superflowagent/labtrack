@@ -65,10 +65,22 @@ jobs:
           echo "y" | supabase db push || echo "No new migrations to apply or error occurred"
 
 
-      - name: Check for local Edge Functions
+
+      - name: Check for valid Edge Functions
         id: check_functions
         run: |
-          if [ -d "supabase/functions" ] && [ "$(find supabase/functions -type f -name '*.ts' -o -name '*.js' -o -name '*.tsc' | grep -v '^\.gitkeep$' | head -n 1)" ]; then
+          FOUND=0
+          if [ -d "supabase/functions" ]; then
+            for d in supabase/functions/*/ ; do
+              if [ -d "$d" ]; then
+                if ls "$d"/index.ts "$d"/index.js "$d"/main.ts "$d"/main.js 1> /dev/null 2>&1; then
+                  FOUND=1
+                  break
+                fi
+              fi
+            done
+          fi
+          if [ "$FOUND" = "1" ]; then
             echo "functions_present=true" >> $GITHUB_OUTPUT
           else
             echo "functions_present=false" >> $GITHUB_OUTPUT
