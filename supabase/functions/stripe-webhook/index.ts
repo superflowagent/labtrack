@@ -99,6 +99,8 @@ serve(async (req: Request) => {
             if (event.type === "checkout.session.completed") {
                 const session = event.data.object as StripeType.Checkout.Session;
                 const clinicId = session.client_reference_id;
+                console.log("checkout.session.completed - clinicId:", clinicId, "customer:", session.customer);
+                
                 if (clinicId) {
                     const { data, error } = await supabase
                         .from('clinics')
@@ -108,8 +110,11 @@ serve(async (req: Request) => {
                     if (error) {
                         console.error("Error updating clinic (checkout.session.completed):", error);
                     } else {
-                        console.log("Updated clinic (checkout.session.completed):", data?.length);
+                        console.log("✓ Successfully updated clinic to premium:", clinicId, "updated rows:", data?.length);
                     }
+                } else {
+                    console.warn("⚠️ checkout.session.completed but NO client_reference_id!");
+                }
                 }
             } else if (event.type === "customer.subscription.deleted") {
                 const subscription = event.data.object as StripeType.Subscription;

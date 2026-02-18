@@ -87,6 +87,8 @@ app.post('/api/portal', express.json(), async (req, res) => {
 app.post('/api/checkout', express.json(), async (req, res) => {
     try {
         const { clinicId, userEmail } = req.body || {}
+        console.log('POST /api/checkout - clinicId:', clinicId, 'userEmail:', userEmail);
+        
         if (!clinicId) return res.status(400).json({ error: 'clinicId is required' })
 
         const stripeSecret = process.env.STRIPE_SECRET_KEY
@@ -95,13 +97,15 @@ app.post('/api/checkout', express.json(), async (req, res) => {
         const priceId = process.env.STRIPE_PRICE_ID
         if (!priceId) return res.status(500).json({ error: 'STRIPE_PRICE_ID not configured' })
 
+        console.log('Using STRIPE_PRICE_ID:', priceId);
+
         const Stripe = (await import('stripe')).default
         const stripe = new Stripe(stripeSecret, { apiVersion: '2026-01-28.clover' })
 
         const origin = req.headers.origin || process.env.VITE_APP_URL || 'http://localhost:5173'
         const baseUrl = String(origin).replace(/\/$/, '')
         
-        const session = await stripe.checkout.sessions.create({
+        const sessionParams = {
             mode: 'subscription',
             payment_method_types: ['card'],
             line_items: [
@@ -115,7 +119,11 @@ app.post('/api/checkout', express.json(), async (req, res) => {
             customer_email: userEmail || undefined,
             // This is the key: storing the clinic ID in the session so the webhook can use it
             client_reference_id: clinicId,
-        })
+        };
+        
+        console.log('Creating Stripe session with params:', JSON.stringify(sessionParams, null, 2));
+        const session = await stripe.checkout.sessions.create(sessionParams);
+        console.log('✓ Stripe session created:', session.id, 'url:', session.url);
 
         return res.json({ sessionId: session.id, url: session.url })
     } catch (err) {
