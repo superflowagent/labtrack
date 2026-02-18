@@ -74,7 +74,8 @@ jobs:
           if [ -d "supabase/functions" ]; then
             for d in supabase/functions/*/ ; do
               if [ -d "$d" ]; then
-                if ls "$d"/index.ts "$d"/index.js "$d"/main.ts "$d"/main.js 1> /dev/null 2>&1; then
+                if [ -f "$d/index.ts" ] || [ -f "$d/index.js" ] || [ -f "$d/main.ts" ] || [ -f "$d/main.js" ]; then
+                  echo "Found function: $d"
                   FOUND=1
                   break
                 fi
