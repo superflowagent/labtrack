@@ -418,59 +418,7 @@ END;
 $$;
 
 
-ALTER FUNCTION "public"."as_uuid_array"("_val" "anyelement") OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."check_subscription_status"("user_email" "text") RETURNS TABLE("stripe_customer_id" "text", "subscription_status" "text", "stripe_trial_end" timestamp with time zone, "needs_update" boolean)
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO 'public', 'extensions'
-    AS $$
-declare
-  v_clinic_id uuid;
-  v_user_id uuid;
-  v_trial_end timestamp with time zone;
-  v_sub_status text;
-begin
-  -- Get the current user
-  v_user_id := auth.uid();
-  
-  if v_user_id is null then
-    raise exception 'Not authenticated';
-  end if;
-
-  -- Get clinic for this user
-  select id, stripe_trial_end, subscription_status 
-  into v_clinic_id, v_trial_end, v_sub_status
-  from public.clinics 
-  where user_id = v_user_id 
-  limit 1;
-
-  if v_clinic_id is null then
-    raise exception 'No clinic found for user';
-  end if;
-
-  -- Check if trial is still valid
-  if v_trial_end > now() then
-    return query select null::text, 'trialing'::text, v_trial_end, false;
-    return;
-  end if;
-
-  -- If trial expired and no subscription, return not subscribed
-  if v_sub_status is null or v_sub_status != 'active' then
-    return query select null::text, 'inactive'::text, null::timestamp with time zone, false;
-    return;
-  end if;
-
-  -- Return current subscription status
-  return query 
-  select c.stripe_customer_id, c.subscription_status, c.stripe_trial_end, false
-  from public.clinics c
-  where c.id = v_clinic_id;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."check_subscription_status"("user_email" "text") OWNER TO "postgres";
+/* consolidated: check_subscription_status removed (migration merged) */
 
 
 CREATE OR REPLACE FUNCTION "public"."create_auth_user_for_profile"() RETURNS "trigger"
@@ -1408,14 +1356,52 @@ CREATE TABLE IF NOT EXISTS "public"."clinics" (
     "user_id" "uuid" NOT NULL,
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "stripe_customer_id" "text",
-    "stripe_subscription_id" "text",
-    "subscription_status" "text",
-    "stripe_trial_end" timestamp with time zone,
-    "manual_premium" boolean DEFAULT false NOT NULL
+    "is_premium" boolean DEFAULT false NOT NULL,
+    "trial_ends_at" timestamp with time zone
 );
 
 
 ALTER TABLE "public"."clinics" OWNER TO "postgres";
+
+DO $$
+BEGIN
+  -- Backfill trial_ends_at from legacy stripe_trial_end if present
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'clinics' AND column_name = 'stripe_trial_end'
+  ) THEN
+    UPDATE public.clinics
+    SET trial_ends_at = stripe_trial_end
+    WHERE trial_ends_at IS NULL AND stripe_trial_end IS NOT NULL;
+  END IF;
+
+  -- Backfill is_premium from legacy indicators
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'clinics' AND column_name = 'manual_premium'
+  ) OR EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'clinics' AND column_name = 'subscription_status'
+  ) OR EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'clinics' AND column_name = 'stripe_trial_end'
+  ) THEN
+    UPDATE public.clinics
+    SET is_premium = true
+    WHERE is_premium = false AND (
+      COALESCE(manual_premium, false) = true
+      OR subscription_status IN ('active','trialing')
+      OR (stripe_trial_end IS NOT NULL AND stripe_trial_end > now())
+      OR (trial_ends_at IS NOT NULL AND trial_ends_at > now())
+    );
+  END IF;
+END $$;
+
+ALTER TABLE IF EXISTS public.clinics
+  DROP COLUMN IF EXISTS subscription_status,
+  DROP COLUMN IF EXISTS stripe_subscription_id,
+  DROP COLUMN IF EXISTS stripe_trial_end,
+  DROP COLUMN IF EXISTS manual_premium;
 
 
 CREATE TABLE IF NOT EXISTS "public"."jobs" (
@@ -1565,35 +1551,16 @@ CREATE POLICY "Clinics are managed by owner" ON "public"."clinics" USING (("user
 
 
 
-CREATE POLICY "Jobs are scoped to clinic" ON "public"."jobs" USING (("clinic_id" IN ( SELECT "clinics"."id"
-   FROM "public"."clinics"
-  WHERE (("clinics"."user_id" = "auth"."uid"()) AND (("clinics"."subscription_status" = ANY (ARRAY['active'::"text", 'trialing'::"text"])) OR (("clinics"."stripe_trial_end" IS NOT NULL) AND ("clinics"."stripe_trial_end" > "now"()))))))) WITH CHECK (("clinic_id" IN ( SELECT "clinics"."id"
-   FROM "public"."clinics"
-  WHERE (("clinics"."user_id" = "auth"."uid"()) AND (("clinics"."subscription_status" = ANY (ARRAY['active'::"text", 'trialing'::"text"])) OR (("clinics"."stripe_trial_end" IS NOT NULL) AND ("clinics"."stripe_trial_end" > "now"())))))));
+CREATE POLICY "Jobs are scoped to clinic" ON public.jobs USING ((clinic_id IN (SELECT clinics.id FROM public.clinics WHERE clinics.user_id = auth.uid()))) WITH CHECK ((clinic_id IN (SELECT clinics.id FROM public.clinics WHERE clinics.user_id = auth.uid())));
 
 
-
-CREATE POLICY "Laboratories are scoped to clinic" ON "public"."laboratories" USING (("clinic_id" IN ( SELECT "clinics"."id"
-   FROM "public"."clinics"
-  WHERE (("clinics"."user_id" = "auth"."uid"()) AND (("clinics"."subscription_status" = ANY (ARRAY['active'::"text", 'trialing'::"text"])) OR (("clinics"."stripe_trial_end" IS NOT NULL) AND ("clinics"."stripe_trial_end" > "now"()))))))) WITH CHECK (("clinic_id" IN ( SELECT "clinics"."id"
-   FROM "public"."clinics"
-  WHERE (("clinics"."user_id" = "auth"."uid"()) AND (("clinics"."subscription_status" = ANY (ARRAY['active'::"text", 'trialing'::"text"])) OR (("clinics"."stripe_trial_end" IS NOT NULL) AND ("clinics"."stripe_trial_end" > "now"())))))));
+CREATE POLICY "Laboratories are scoped to clinic" ON public.laboratories USING ((clinic_id IN (SELECT clinics.id FROM public.clinics WHERE clinics.user_id = auth.uid()))) WITH CHECK ((clinic_id IN (SELECT clinics.id FROM public.clinics WHERE clinics.user_id = auth.uid())));
 
 
-
-CREATE POLICY "Patients are scoped to clinic" ON "public"."patients" USING (("clinic_id" IN ( SELECT "clinics"."id"
-   FROM "public"."clinics"
-  WHERE (("clinics"."user_id" = "auth"."uid"()) AND (("clinics"."subscription_status" = ANY (ARRAY['active'::"text", 'trialing'::"text"])) OR (("clinics"."stripe_trial_end" IS NOT NULL) AND ("clinics"."stripe_trial_end" > "now"()))))))) WITH CHECK (("clinic_id" IN ( SELECT "clinics"."id"
-   FROM "public"."clinics"
-  WHERE (("clinics"."user_id" = "auth"."uid"()) AND (("clinics"."subscription_status" = ANY (ARRAY['active'::"text", 'trialing'::"text"])) OR (("clinics"."stripe_trial_end" IS NOT NULL) AND ("clinics"."stripe_trial_end" > "now"())))))));
+CREATE POLICY "Patients are scoped to clinic" ON public.patients USING ((clinic_id IN (SELECT clinics.id FROM public.clinics WHERE clinics.user_id = auth.uid()))) WITH CHECK ((clinic_id IN (SELECT clinics.id FROM public.clinics WHERE clinics.user_id = auth.uid())));
 
 
-
-CREATE POLICY "Specialists are scoped to clinic" ON "public"."specialists" USING (("clinic_id" IN ( SELECT "clinics"."id"
-   FROM "public"."clinics"
-  WHERE (("clinics"."user_id" = "auth"."uid"()) AND (("clinics"."subscription_status" = ANY (ARRAY['active'::"text", 'trialing'::"text"])) OR (("clinics"."stripe_trial_end" IS NOT NULL) AND ("clinics"."stripe_trial_end" > "now"()))))))) WITH CHECK (("clinic_id" IN ( SELECT "clinics"."id"
-   FROM "public"."clinics"
-  WHERE (("clinics"."user_id" = "auth"."uid"()) AND (("clinics"."subscription_status" = ANY (ARRAY['active'::"text", 'trialing'::"text"])) OR (("clinics"."stripe_trial_end" IS NOT NULL) AND ("clinics"."stripe_trial_end" > "now"())))))));
+CREATE POLICY "Specialists are scoped to clinic" ON public.specialists USING ((clinic_id IN (SELECT clinics.id FROM public.clinics WHERE clinics.user_id = auth.uid()))) WITH CHECK ((clinic_id IN (SELECT clinics.id FROM public.clinics WHERE clinics.user_id = auth.uid())));
 
 
 
@@ -1615,6 +1582,64 @@ ALTER TABLE "public"."specialists" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER PUBLICATION "supabase_realtime" OWNER TO "postgres";
+
+/* consolidated: reset_production_db.sql — defensive cleanup from earlier migration */
+-- Drop objects that may exist from an incorrect/old project (idempotent)
+DROP TABLE IF EXISTS "public"."program_exercises" CASCADE;
+DROP TABLE IF EXISTS "public"."programs" CASCADE;
+DROP TABLE IF EXISTS "public"."profiles" CASCADE;
+DROP TABLE IF EXISTS "public"."invoices" CASCADE;
+DROP TABLE IF EXISTS "public"."exercises" CASCADE;
+DROP TABLE IF EXISTS "public"."events" CASCADE;
+DROP TABLE IF EXISTS "public"."equipment" CASCADE;
+DROP TABLE IF EXISTS "public"."companies" CASCADE;
+DROP TABLE IF EXISTS "public"."classes_templates" CASCADE;
+DROP TABLE IF EXISTS "public"."app_settings" CASCADE;
+DROP TABLE IF EXISTS "public"."anatomy" CASCADE;
+
+-- Drop miscellaneous functions (idempotent)
+DROP FUNCTION IF EXISTS "public"."accept_invite"(p_token text) CASCADE;
+DROP FUNCTION IF EXISTS "public"."accept_invite_debug"(p_token text) CASCADE;
+DROP FUNCTION IF EXISTS "public"."accept_invite_http"(p_token text) CASCADE;
+DROP FUNCTION IF EXISTS "public"."accept_invite_verbose"(p_token text) CASCADE;
+DROP FUNCTION IF EXISTS "public"."adjust_class_credits_on_events_change"() CASCADE;
+DROP FUNCTION IF EXISTS "public"."as_uuid_array"(_val uuid[]) CASCADE;
+DROP FUNCTION IF EXISTS "public"."as_uuid_array"(_val anyarray) CASCADE;
+DROP FUNCTION IF EXISTS "public"."as_uuid_array"(_val anyelement) CASCADE;
+DROP FUNCTION IF EXISTS "public"."check_subscription_status"(user_email text) CASCADE;
+DROP FUNCTION IF EXISTS "public"."create_auth_user_for_profile"() CASCADE;
+DROP FUNCTION IF EXISTS "public"."dbg_accept_invite_sim"(p_token uuid, p_caller uuid) CASCADE;
+DROP FUNCTION IF EXISTS "public"."dbg_delete_profile_sim"(p_profile_id uuid, p_caller uuid, p_delete_auth boolean) CASCADE;
+DROP FUNCTION IF EXISTS "public"."debug_get_caller_info"() CASCADE;
+DROP FUNCTION IF EXISTS "public"."debug_list_pg_triggers_profiles"() CASCADE;
+DROP FUNCTION IF EXISTS "public"."debug_list_profiles_triggers"() CASCADE;
+DROP FUNCTION IF EXISTS "public"."delete_event_json"(p_payload jsonb) CASCADE;
+DROP FUNCTION IF EXISTS "public"."delete_profile_rpc"(p_profile_id uuid, p_delete_auth boolean) CASCADE;
+DROP FUNCTION IF EXISTS "public"."fn_set_program_exercise_notes"() CASCADE;
+DROP FUNCTION IF EXISTS "public"."get_event_attendee_profiles"(p_event uuid) CASCADE;
+DROP FUNCTION IF EXISTS "public"."get_events_for_company"(p_company uuid) CASCADE;
+DROP FUNCTION IF EXISTS "public"."get_profiles_by_ids_for_clients"(p_ids uuid[]) CASCADE;
+DROP FUNCTION IF EXISTS "public"."get_profiles_by_ids_for_clients"(p_ids uuid[], p_company uuid) CASCADE;
+DROP FUNCTION IF EXISTS "public"."get_profiles_by_ids_for_professionals"(p_ids uuid[]) CASCADE;
+DROP FUNCTION IF EXISTS "public"."get_profiles_by_ids_for_professionals"(p_ids uuid[], p_company uuid) CASCADE;
+DROP FUNCTION IF EXISTS "public"."get_profiles_by_role_for_clients"(p_role text) CASCADE;
+DROP FUNCTION IF EXISTS "public"."get_profiles_by_role_for_clients"(p_role text, p_company uuid) CASCADE;
+DROP FUNCTION IF EXISTS "public"."get_profiles_by_role_for_professionals"(p_role text) CASCADE;
+DROP FUNCTION IF EXISTS "public"."get_profiles_by_role_for_professionals"(p_role text, p_company uuid) CASCADE;
+DROP FUNCTION IF EXISTS "public"."get_profiles_for_professionals"() CASCADE;
+DROP FUNCTION IF EXISTS "public"."get_profiles_policies"() CASCADE;
+DROP FUNCTION IF EXISTS "public"."insert_event_json"(p_payload jsonb) CASCADE;
+DROP FUNCTION IF EXISTS "public"."is_member_of_company"(p_company uuid) CASCADE;
+DROP FUNCTION IF EXISTS "public"."is_professional_of_company"(p_company uuid) CASCADE;
+DROP FUNCTION IF EXISTS "public"."is_profile_admin_of"(company_id uuid) CASCADE;
+DROP FUNCTION IF EXISTS "public"."is_profile_member_of"(company_id uuid) CASCADE;
+DROP FUNCTION IF EXISTS "public"."is_profile_professional_or_admin_of"(p_company uuid) CASCADE;
+DROP FUNCTION IF EXISTS "public"."is_same_company"(p_company uuid) CASCADE;
+DROP FUNCTION IF EXISTS "public"."prevent_role_escalation"() CASCADE;
+DROP FUNCTION IF EXISTS "public"."reset_reminder_on_event_change"() CASCADE;
+DROP FUNCTION IF EXISTS "public"."unlink_deleted_anatomy_from_exercises"() CASCADE;
+DROP FUNCTION IF EXISTS "public"."unlink_deleted_equipment_from_exercises"() CASCADE;
+DROP FUNCTION IF EXISTS "public"."update_event_json"(p_payload jsonb) CASCADE;
 
 
 
@@ -1855,9 +1880,7 @@ GRANT ALL ON FUNCTION "public"."as_uuid_array"("_val" "anyelement") TO "service_
 
 
 
-GRANT ALL ON FUNCTION "public"."check_subscription_status"("user_email" "text") TO "anon";
-GRANT ALL ON FUNCTION "public"."check_subscription_status"("user_email" "text") TO "authenticated";
-GRANT ALL ON FUNCTION "public"."check_subscription_status"("user_email" "text") TO "service_role";
+/* consolidated: removed grants for check_subscription_status */
 
 
 
