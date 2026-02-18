@@ -1112,7 +1112,6 @@ function DashboardPage() {
           setFilters={setLabsFilters}
           showPaciente={true}
           showLaboratorio={false}
-          showEstado={false}
         />
         <LaboratoriesTable
           asCard={false}
@@ -1218,7 +1217,6 @@ function DashboardPage() {
           setFilters={setSpecialistsFilters}
           showPaciente={true}
           showLaboratorio={false}
-          showEstado={false}
         />
         <SpecialistsTable
           asCard={false}
@@ -1246,7 +1244,6 @@ function DashboardPage() {
           setFilters={setPatientsFilters}
           showPaciente={true}
           showLaboratorio={false}
-          showEstado={false}
         />
         <PatientsTable
           asCard={false}

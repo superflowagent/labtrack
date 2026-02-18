@@ -62,6 +62,6 @@ export const useJobs = () => {
 
   return useMemo(
     () => ({ jobs, labs, specialists, patients, loading, error, reload: load, addJob, updateLocalJobStatus }),
-    [jobs, labs, specialists, patients, loading, error, load, addJob],
+    [jobs, labs, specialists, patients, loading, error, load, addJob, updateLocalJobStatus],
   )
 }
