@@ -83,6 +83,49 @@ app.post('/api/portal', express.json(), async (req, res) => {
     }
 });
 
+// Dev helper: create a Stripe checkout session for a clinic subscription
+app.post('/api/checkout', express.json(), async (req, res) => {
+    try {
+        const { clinicId, userEmail } = req.body || {}
+        if (!clinicId) return res.status(400).json({ error: 'clinicId is required' })
+
+        const stripeSecret = process.env.STRIPE_SECRET_KEY
+        if (!stripeSecret) return res.status(500).json({ error: 'Stripe not configured' })
+        
+        const priceId = process.env.STRIPE_PRICE_ID
+        if (!priceId) return res.status(500).json({ error: 'STRIPE_PRICE_ID not configured' })
+
+        const Stripe = (await import('stripe')).default
+        const stripe = new Stripe(stripeSecret, { apiVersion: '2026-01-28.clover' })
+
+        const origin = req.headers.origin || process.env.VITE_APP_URL || 'http://localhost:5173'
+        const baseUrl = String(origin).replace(/\/$/, '')
+        
+        const session = await stripe.checkout.sessions.create({
+            mode: 'subscription',
+            payment_method_types: ['card'],
+            line_items: [
+                {
+                    price: priceId,
+                    quantity: 1,
+                },
+            ],
+            success_url: `${baseUrl}/dashboard?payment=success`,
+            cancel_url: `${baseUrl}/clinic-settings`,
+            customer_email: userEmail || undefined,
+            // This is the key: storing the clinic ID in the session so the webhook can use it
+            client_reference_id: clinicId,
+        })
+
+        return res.json({ sessionId: session.id, url: session.url })
+    } catch (err) {
+        console.error('Stripe checkout session creation error:', err)
+        return res.status(500).json({ 
+            error: err instanceof Error ? err.message : 'Failed to create checkout session' 
+        })
+    }
+});
+
 app.post('/poll/:id', (req, res) => {
     console.log('POST /poll/:id called with id:', req.params.id);
     res.json({ id: req.params.id });

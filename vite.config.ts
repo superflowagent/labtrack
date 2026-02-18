@@ -12,8 +12,13 @@ export default defineConfig({
   },
   server: {
     proxy: {
-      // dev: forward portal requests to the local test server
+      // dev: forward API requests to the local test server
       '/api/portal': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+        secure: false,
+      },
+      '/api/checkout': {
         target: 'http://localhost:3001',
         changeOrigin: true,
         secure: false,
