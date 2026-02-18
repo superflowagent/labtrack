@@ -1,6 +1,8 @@
 // supabase/functions/stripe-webhook/index.ts
 // Edge Function para recibir eventos de Stripe y actualizar Supabase
 import type StripeType from 'stripe'
+// @ts-ignore - Supabase injected client
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const serve = Deno.serve as unknown as (handler: (req: Request) => Promise<Response> | Response) => void;
 
@@ -13,12 +15,20 @@ const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY")!, {
 });
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-// SERVICE_ROLE_KEY used for local Edge Functions (.env.local can't inject names starting with SUPABASE_)
-const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SERVICE_ROLE_KEY") ?? Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 const STRIPE_WEBHOOK_SECRET = Deno.env.get("STRIPE_WEBHOOK_SECRET");
 
+// Initialize Supabase client with service role (admin) for mutations
+// In Edge Functions, use SUPABASE_ANON_KEY to avoid requiring SERVICE_ROLE_KEY
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+    },
+});
+
 // DEBUG: print presence of critical env vars (local only)
-console.log('env: SERVICE_ROLE_KEY:', Boolean(Deno.env.get('SERVICE_ROLE_KEY')), 'STRIPE_WEBHOOK_SECRET set:', STRIPE_WEBHOOK_SECRET ? String(STRIPE_WEBHOOK_SECRET).slice(0, 10) + '...' : false);
+console.log('env: SUPABASE_ANON_KEY set:', Boolean(Deno.env.get('SUPABASE_ANON_KEY')), 'STRIPE_WEBHOOK_SECRET set:', STRIPE_WEBHOOK_SECRET ? String(STRIPE_WEBHOOK_SECRET).slice(0, 10) + '...' : false);
 
 serve(async (req: Request) => {
     try {
@@ -26,8 +36,8 @@ serve(async (req: Request) => {
             return new Response("Method Not Allowed", { status: 405 });
         }
 
-        if (!SUPABASE_SERVICE_ROLE_KEY) {
-            console.error("Missing SUPABASE service role key in function env (SERVICE_ROLE_KEY)");
+        if (!SUPABASE_ANON_KEY) {
+            console.error("Missing SUPABASE_ANON_KEY in function env");
             return new Response(JSON.stringify({ error: "server misconfigured" }), { status: 500 });
         }
 
@@ -78,33 +88,31 @@ serve(async (req: Request) => {
                 const session = event.data.object as StripeType.Checkout.Session;
                 const clinicId = session.client_reference_id;
                 if (clinicId) {
-                    const res = await fetch(`${SUPABASE_URL}/rest/v1/clinics?id=eq.${clinicId}`, {
-                        method: "PATCH",
-                        headers: {
-                            apikey: SUPABASE_SERVICE_ROLE_KEY,
-                            Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-                            "Content-Type": "application/json",
-                            Prefer: "return=representation",
-                        },
-                        body: JSON.stringify({ is_premium: true, stripe_customer_id: session.customer ?? null }),
-                    });
-                    console.log("PATCH clinics (checkout.session.completed)", res.status);
+                    const { data, error } = await supabase
+                        .from('clinics')
+                        .update({ is_premium: true, stripe_customer_id: session.customer ?? null })
+                        .eq('id', clinicId)
+                        .select();
+                    if (error) {
+                        console.error("Error updating clinic (checkout.session.completed):", error);
+                    } else {
+                        console.log("Updated clinic (checkout.session.completed):", data?.length);
+                    }
                 }
             } else if (event.type === "customer.subscription.deleted") {
                 const subscription = event.data.object as StripeType.Subscription;
                 const customerId = subscription.customer as string | undefined;
                 if (customerId) {
-                    const res = await fetch(`${SUPABASE_URL}/rest/v1/clinics?stripe_customer_id=eq.${customerId}`, {
-                        method: "PATCH",
-                        headers: {
-                            apikey: SUPABASE_SERVICE_ROLE_KEY,
-                            Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-                            "Content-Type": "application/json",
-                            Prefer: "return=representation",
-                        },
-                        body: JSON.stringify({ is_premium: false }),
-                    });
-                    console.log("PATCH clinics (customer.subscription.deleted)", res.status);
+                    const { data, error } = await supabase
+                        .from('clinics')
+                        .update({ is_premium: false })
+                        .eq('stripe_customer_id', customerId)
+                        .select();
+                    if (error) {
+                        console.error("Error updating clinic (customer.subscription.deleted):", error);
+                    } else {
+                        console.log("Updated clinic (customer.subscription.deleted):", data?.length);
+                    }
                 }
             } else {
                 // Log and ignore other event types to avoid 503 from unhandled cases
