@@ -354,7 +354,6 @@ function DashboardPage() {
   const [patientFormError, setPatientFormError] = useState<string | null>(null)
 
   const [snackbar, setSnackbar] = useState<{ open: boolean; kind?: 'job' | 'lab' | 'spec' | 'patient'; item?: Job | Laboratory | Specialist | Patient | null; message?: string }>({ open: false })
-  const [updatingStatusFor, setUpdatingStatusFor] = useState<string | null>(null)
 
   const activeFiltersCount = useMemo(() => {
     let count = 0
@@ -991,18 +990,6 @@ function DashboardPage() {
                               <div className="flex items-center gap-2 truncate w-full">
                                 <span className="truncate"><SelectValue /></span>
                               </div>
-
-                              {/* fixed-size placeholder for spinner to prevent width shift */}
-                              <span className="w-4 h-4 flex items-center justify-center">
-                                {updatingStatusFor === job.id ? (
-                                  <svg className="h-3 w-3 animate-spin text-current" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
-                                    <circle cx="12" cy="12" r="10" strokeOpacity="0.25" />
-                                    <path d="M22 12a10 10 0 0 1-10 10" strokeLinecap="round" />
-                                  </svg>
-                                ) : (
-                                  <span className="h-3 w-3" aria-hidden />
-                                )}
-                              </span>
                             </div>
                           </SelectTrigger>
 

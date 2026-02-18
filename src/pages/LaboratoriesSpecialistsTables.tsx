@@ -131,7 +131,7 @@ export function LaboratoriesTable({ labs, filter, onEdit, asCard = true }: { lab
                 </Card>
             ) : (
                 <>
-                    <div className="p-0 flex-1 min-h-0 pb-16">
+                    <div className="p-0 flex-1 min-h-0 overflow-auto">
                         <Table ref={labsTableRef}>
                             <colgroup>
                                 <col style={{ width: '40%' }} />
@@ -336,7 +336,7 @@ export function SpecialistsTable({ specialists, filter, onEdit, asCard = true }:
                 </Card>
             ) : (
                 <>
-                    <div className="p-0 flex-1 min-h-0 pb-16">
+                    <div className="p-0 flex-1 min-h-0 overflow-auto">
                         <Table ref={specsTableRef}>
                             <colgroup>
                                 <col style={{ width: '30%' }} />
@@ -542,7 +542,7 @@ export function PatientsTable({ patients, filter, onEdit, asCard = true }: { pat
                 </Card>
             ) : (
                 <>
-                    <div className="p-0 flex-1 min-h-0 pb-16">
+                    <div className="p-0 flex-1 min-h-0 overflow-auto">
                         <Table ref={patientsTableRef}>
                             <colgroup>
                                 <col style={{ width: '20%' }} />
