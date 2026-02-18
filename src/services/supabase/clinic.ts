@@ -8,7 +8,7 @@ export const getClinicForUser = async (): Promise<Clinic> => {
 
   const { data: clinic, error: clinicError } = await supabase
     .from('clinics')
-    .select('id, name, stripe_customer_id, is_premium, trial_ends_at, user_id')
+    .select('id, name, is_premium, trial_ends_at, user_id')
     .eq('user_id', data.user.id)
     .single()
 

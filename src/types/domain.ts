@@ -15,12 +15,9 @@ export type Laboratory = {
 export type Clinic = {
   id: string
   name: string
-  stripe_customer_id: string | null
   is_premium: boolean
-  trial_ends_at: string
-  stripe_trial_end?: string | null
-  manual_premium?: boolean
-  subscription_status?: 'active' | 'trialing' | 'none' | 'canceled' | null
+  trial_ends_at?: string | null
+  user_id?: string
 }
 
 export type Specialist = {

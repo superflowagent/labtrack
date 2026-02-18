@@ -92,8 +92,7 @@ export const LoginPage = () => {
         const { error: clinicError } = await supabase.from('clinics').insert({
           name: clinicName,
           user_id: data.user.id,
-          subscription_status: 'trialing',
-          stripe_trial_end: trialEnd,
+          trial_ends_at: trialEnd,
         })
         if (clinicError) {
           console.error('Clinic creation error:', clinicError)

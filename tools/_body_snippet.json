@@ -1,0 +1,21 @@
+  "type": "checkout.session.completed"
+}
+---
+{
+  "id": "evt_1T1xYp9lx4Sn74FvvvgbL0Df",
+  "object": "event",
+  "api_version": "2025-09-30.clover",
+  "created": 1771370406,
+  "data": {
+    "object": {
+      "id": "cs_test_a1Y1sLiC2avEJdxjTzBYkMYNYsU1iHh9kte0Fr8CkhMBokD0QFQrw6RdKM",
+      "object": "checkout.session",
+      "adaptive_pricing": {
+        "enabled": true
+      },
+      "after_expiration": null,
+      "allow_promotion_codes": null,
+      "amount_subtotal": 3000,
+      "amount_total": 3000,
+      "automatic_tax": {
+        "enabled": false,

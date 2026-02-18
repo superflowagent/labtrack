@@ -1,12 +1,12 @@
-import { useCallback, useEffect, useState } from 'react'
-import { supabase } from '@/services/supabase/client'
-import { Card, CardHeader, CardTitle } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-
+import { useState, useEffect, useCallback } from 'react'
 import { getClinicForUser, updateClinic } from '@/services/supabase/clinic'
 import type { Clinic } from '@/types/domain'
+import { supabase } from '@/services/supabase/client'
+import { Card, CardHeader, CardTitle } from '@/components/ui/card'
+import { Label } from '@/components/ui/label'
+import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
+
 
 export default function ClinicSettings({ asCard = false }: { asCard?: boolean } = {}) {
     const [clinic, setClinic] = useState<Clinic | null>(null)
@@ -14,6 +14,7 @@ export default function ClinicSettings({ asCard = false }: { asCard?: boolean } 
     const [name, setName] = useState('')
     const [nameSaving, setNameSaving] = useState(false)
     const [nameSaveStatus, setNameSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
+    const [portalLoading, setPortalLoading] = useState(false)
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
 
@@ -90,10 +91,10 @@ export default function ClinicSettings({ asCard = false }: { asCard?: boolean } 
     let trialDaysLeft = 0
     if (clinic) {
         const now = new Date()
-        const trialEnd = new Date(clinic.trial_ends_at)
+        const trialEnd = clinic.trial_ends_at ? new Date(clinic.trial_ends_at) : null
         if (clinic.is_premium) {
             subscriptionStatus = 'premium'
-        } else if (now < trialEnd) {
+        } else if (trialEnd && now < trialEnd) {
             subscriptionStatus = 'trial'
             trialDaysLeft = Math.ceil((trialEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
         }
@@ -133,20 +134,26 @@ export default function ClinicSettings({ asCard = false }: { asCard?: boolean } 
                         <div className="mb-4">
                             <Label className="mb-2">Suscripción</Label>
                             <div className="flex flex-col gap-2">
-                                {subscriptionStatus === 'premium' && (
-                                    <span className="text-green-700">Premium activa</span>
-                                )}
-                                {subscriptionStatus === 'trial' && (
-                                    <span className="text-yellow-700">Prueba activa ({trialDaysLeft} días restantes)</span>
-                                )}
-                                {subscriptionStatus === 'none' && (
-                                    <span className="text-red-700">Sin suscripción activa</span>
-                                )}
+                                <span
+                                    className={
+                                        subscriptionStatus === 'premium'
+                                            ? 'self-start w-auto my-2 inline-flex items-center gap-1.5 rounded-full bg-green-50 px-3 py-1 text-xs font-medium text-green-700'
+                                            : subscriptionStatus === 'trial'
+                                                ? 'self-start w-auto my-2 inline-flex items-center gap-1.5 rounded-full bg-yellow-50 px-3 py-1 text-xs font-medium text-yellow-700'
+                                                : 'self-start w-auto my-2 inline-flex items-center gap-1.5 rounded-full bg-red-50 px-3 py-1 text-xs font-medium text-red-700'
+                                    }
+                                >
+                                    {subscriptionStatus === 'premium' && `⭐ Suscripción activa`}
+                                    {subscriptionStatus === 'trial' && `⏳ Prueba gratuita (${trialDaysLeft} días restantes)`}
+                                    {subscriptionStatus === 'none' && `🚫 Sin suscripción`}
+                                </span>
                                 <Button
                                     variant="outline"
                                     className="w-fit"
+                                    disabled={portalLoading}
                                     onClick={async () => {
                                         if (!clinic) return
+
                                         // Si no es premium, ir al payment link
                                         if (subscriptionStatus !== 'premium') {
                                             const paymentLink = import.meta.env.MODE === 'production'
@@ -160,17 +167,36 @@ export default function ClinicSettings({ asCard = false }: { asCard?: boolean } 
                                             window.location.href = url
                                             return
                                         }
-                                        // Si es premium, ir al portal de cliente
-                                        const res = await fetch('/api/portal', {
-                                            method: 'POST',
-                                            headers: { 'Content-Type': 'application/json' },
-                                            body: JSON.stringify({ clinicId: clinic.id }),
-                                        })
-                                        const data = await res.json()
-                                        if (data.url) window.location.href = data.url
+
+                                        // premium -> open Stripe Customer Portal (server-side)
+                                        setPortalLoading(true)
+                                        try {
+                                            const { data: { session } } = await supabase.auth.getSession()
+                                            const token = session?.access_token
+
+                                            const endpoint = '/api/portal' // dev proxy forwards to test-server
+                                            const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+                                            if (token) headers['Authorization'] = `Bearer ${token}`
+
+                                            const res = await fetch(endpoint, { method: 'POST', headers, body: JSON.stringify({ clinicId: clinic.id }) })
+
+                                            if (!res.ok) {
+                                                let errBody: any = null
+                                                try { errBody = await res.json() } catch { /* ignore non-json */ }
+                                                throw new Error(errBody?.error || res.statusText || 'No se pudo abrir el portal')
+                                            }
+
+                                            const data = await res.json()
+                                            if (data?.url) window.location.href = data.url
+                                        } catch (err: unknown) {
+                                            const msg = err instanceof Error ? err.message : String(err)
+                                            setError(msg)
+                                        } finally {
+                                            setPortalLoading(false)
+                                        }
                                     }}
                                 >
-                                    Gestionar suscripción
+                                    {portalLoading ? 'Abriendo…' : 'Gestionar suscripción'}
                                 </Button>
                             </div>
                         </div>

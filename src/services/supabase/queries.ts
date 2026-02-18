@@ -20,10 +20,10 @@ export const getClinicIdForUser = async () => {
 const ensureActiveClinic = async () => {
   const clinic = await getClinicForUser()
   const now = new Date()
-  const trialEnd = clinic?.stripe_trial_end ? new Date(clinic.stripe_trial_end) : null
+  const trialEnd = clinic?.trial_ends_at ? new Date(clinic.trial_ends_at) : null
   const trialStillActive = !!trialEnd && trialEnd > now
-  const isActive = !!clinic?.manual_premium || clinic?.subscription_status === 'active' || (clinic?.subscription_status === 'trialing' && trialStillActive) || trialStillActive
-  if (!isActive) throw new Error('Se requiere una suscripción activa o periodo de prueba para realizar esta acción.')
+  const isActive = !!clinic?.is_premium || trialStillActive
+  if (!isActive) throw new Error('Se requiere una suscripción activa.')
   return clinic as Clinic
 }
 
