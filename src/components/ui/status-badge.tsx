@@ -1,4 +1,3 @@
-import React from 'react'
 import { cn } from '@/lib/utils'
 import { BadgeCheck, Clock, Archive, FlaskConical } from 'lucide-react'
 import type { JobStatus } from '@/types/domain'
