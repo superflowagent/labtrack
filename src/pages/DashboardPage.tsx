@@ -82,15 +82,15 @@ const getStatusPillClass = (status?: string) => {
   // versión compacta del badge para la tabla (menor padding y altura)
   switch (status) {
     case 'En laboratorio':
-      return 'w-full inline-flex items-center justify-between gap-2 h-7 rounded-full bg-yellow-50 px-3 py-0.5 text-xs font-medium text-yellow-700'
+      return 'w-full flex items-center justify-between gap-2 h-7 rounded-full bg-yellow-50 px-3 py-0.5 text-xs font-medium text-yellow-700'
     case 'En clinica (sin citar)':
-      return 'w-full inline-flex items-center justify-between gap-2 h-7 rounded-full bg-orange-100 px-3 py-0.5 text-xs font-medium text-orange-800'
+      return 'w-full flex items-center justify-between gap-2 h-7 rounded-full bg-orange-100 px-3 py-0.5 text-xs font-medium text-orange-800'
     case 'En clinica (citado)':
-      return 'w-full inline-flex items-center justify-between gap-2 h-7 rounded-full bg-purple-50 px-3 py-0.5 text-xs font-medium text-purple-700'
+      return 'w-full flex items-center justify-between gap-2 h-7 rounded-full bg-purple-50 px-3 py-0.5 text-xs font-medium text-purple-700'
     case 'Cerrado':
-      return 'w-full inline-flex items-center justify-between gap-2 h-7 rounded-full bg-blue-50 px-3 py-0.5 text-xs font-medium text-blue-700'
+      return 'w-full flex items-center justify-between gap-2 h-7 rounded-full bg-blue-50 px-3 py-0.5 text-xs font-medium text-blue-700'
     default:
-      return 'w-full inline-flex items-center justify-between gap-2 h-7 rounded-full bg-teal-50 px-3 py-0.5 text-xs font-medium text-teal-700'
+      return 'w-full flex items-center justify-between gap-2 h-7 rounded-full bg-teal-50 px-3 py-0.5 text-xs font-medium text-teal-700'
   }
 }
 
@@ -894,7 +894,7 @@ function DashboardPage() {
                 <TableHead>Trabajo</TableHead>
                 <TableHead>Laboratorio</TableHead>
                 <TableHead>Especialista</TableHead>
-                <TableHead>Estado</TableHead>
+                <TableHead className="min-w-[220px]">Estado</TableHead>
                 <TableHead>Fecha</TableHead>
                 <TableHead>Transcurrido</TableHead>
               </TableRow>
@@ -992,8 +992,10 @@ function DashboardPage() {
                             disabled={updatingStatusFor === job.id}
                             className={getStatusPillClass(job.status)}
                           >
-                            <div className="flex items-center gap-2 min-w-0">
-                              <SelectValue />
+                            <div className="flex items-center gap-2 w-full">
+                              <div className="flex items-center gap-2 truncate w-full">
+                                <span className="truncate"><SelectValue /></span>
+                              </div>
 
                               {/* fixed-size placeholder for spinner to prevent width shift */}
                               <span className="w-4 h-4 flex items-center justify-center">
