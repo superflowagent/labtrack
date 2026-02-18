@@ -4,6 +4,14 @@ import { createJob, fetchJobs, fetchLaboratories, fetchPatients, fetchSpecialist
 
 export const useJobs = () => {
   const [jobs, setJobs] = useState<Job[]>([])
+  // Permite actualizar el estado de un trabajo localmente (optimista)
+  const updateLocalJobStatus = useCallback((jobId: string, status: Job["status"]) => {
+    setJobs((prevJobs) =>
+      prevJobs.map((job) =>
+        job.id === jobId ? { ...job, status } : job
+      )
+    )
+  }, [])
   const [labs, setLabs] = useState<Laboratory[]>([])
   const [specialists, setSpecialists] = useState<Specialist[]>([])
   const [patients, setPatients] = useState<Patient[]>([])
@@ -51,12 +59,9 @@ export const useJobs = () => {
     [clinicId],
   )
 
-  const updateLocalJobStatus = useCallback((jobId: string, status: Job['status']) => {
-    setJobs((prev) => prev.map((j) => (j.id === jobId ? { ...j, status } : j)))
-  }, [])
 
   return useMemo(
     () => ({ jobs, labs, specialists, patients, loading, error, reload: load, addJob, updateLocalJobStatus }),
-    [jobs, labs, specialists, patients, loading, error, load, addJob, updateLocalJobStatus],
+    [jobs, labs, specialists, patients, loading, error, load, addJob],
   )
 }

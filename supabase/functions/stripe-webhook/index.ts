@@ -1,11 +1,12 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 // supabase/functions/stripe-webhook/index.ts
 // Edge Function para recibir eventos de Stripe y actualizar Supabase
+import type StripeType from 'stripe'
+
 const serve = Deno.serve as unknown as (handler: (req: Request) => Promise<Response> | Response) => void;
 
 // runtime-only dynamic import for Deno (silences editor module-resolution errors)
 // @ts-expect-error - runtime-only import
-const Stripe: any = (await import('npm:stripe@12.6.0')).default;
+const Stripe = (await import('npm:stripe@12.6.0')).default as unknown as typeof import('stripe').default;
 
 const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY")!, {
     apiVersion: "2022-11-15",
@@ -48,7 +49,7 @@ serve(async (req: Request) => {
         }
 
         // `event` will be populated below (signature-verified or parsed)
-        let event: any;
+        let event: StripeType.Event | undefined;
 
         if (STRIPE_WEBHOOK_SECRET) {
             try {
@@ -65,7 +66,7 @@ serve(async (req: Request) => {
             console.warn("STRIPE_WEBHOOK_SECRET not set — skipping signature verification (local only)");
             try {
                 const text = new TextDecoder().decode(buf);
-                event = JSON.parse(text) as Stripe.Event;
+                event = JSON.parse(text) as StripeType.Event;
             } catch (err) {
                 console.error("Failed to parse Stripe event payload without signature:", err);
                 return new Response(JSON.stringify({ error: "Invalid payload" }), { status: 400 });
@@ -74,7 +75,7 @@ serve(async (req: Request) => {
 
         try {
             if (event.type === "checkout.session.completed") {
-                const session = event.data.object as Stripe.Checkout.Session;
+                const session = event.data.object as StripeType.Checkout.Session;
                 const clinicId = session.client_reference_id;
                 if (clinicId) {
                     const res = await fetch(`${SUPABASE_URL}/rest/v1/clinics?id=eq.${clinicId}`, {
@@ -90,7 +91,7 @@ serve(async (req: Request) => {
                     console.log("PATCH clinics (checkout.session.completed)", res.status);
                 }
             } else if (event.type === "customer.subscription.deleted") {
-                const subscription = event.data.object as Stripe.Subscription;
+                const subscription = event.data.object as StripeType.Subscription;
                 const customerId = subscription.customer as string | undefined;
                 if (customerId) {
                     const res = await fetch(`${SUPABASE_URL}/rest/v1/clinics?stripe_customer_id=eq.${customerId}`, {

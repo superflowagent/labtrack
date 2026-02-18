@@ -58,7 +58,7 @@ export function LaboratoriesTable({ labs, filter, onEdit, asCard = true }: { lab
         <>
             {asCard ? (
                 <Card className="border-slate-200 bg-white flex flex-col flex-1 min-h-0 overflow-hidden">
-                    <div className="p-0 flex-1 min-h-0">
+                    <div className="p-0 flex-1 min-h-0 pb-16">
                         <Table ref={labsTableRef}>
                             <colgroup>
                                 <col style={{ width: '40%' }} />
@@ -131,7 +131,7 @@ export function LaboratoriesTable({ labs, filter, onEdit, asCard = true }: { lab
                 </Card>
             ) : (
                 <>
-                    <div className="p-0 flex-1 min-h-0">
+                    <div className="p-0 flex-1 min-h-0 pb-16">
                         <Table ref={labsTableRef}>
                             <colgroup>
                                 <col style={{ width: '40%' }} />
@@ -262,7 +262,7 @@ export function SpecialistsTable({ specialists, filter, onEdit, asCard = true }:
         <>
             {asCard ? (
                 <Card className="border-slate-200 bg-white flex flex-col flex-1 min-h-0 overflow-hidden">
-                    <div className="p-0 flex-1 min-h-0">
+                    <div className="p-0 flex-1 min-h-0 pb-16">
                         <Table ref={specsTableRef}>
                             <colgroup>
                                 <col style={{ width: '30%' }} />
@@ -336,7 +336,7 @@ export function SpecialistsTable({ specialists, filter, onEdit, asCard = true }:
                 </Card>
             ) : (
                 <>
-                    <div className="p-0 flex-1 min-h-0">
+                    <div className="p-0 flex-1 min-h-0 pb-16">
                         <Table ref={specsTableRef}>
                             <colgroup>
                                 <col style={{ width: '30%' }} />
@@ -466,7 +466,7 @@ export function PatientsTable({ patients, filter, onEdit, asCard = true }: { pat
         <>
             {asCard ? (
                 <Card className="border-slate-200 bg-white flex flex-col flex-1 min-h-0 overflow-hidden">
-                    <div className="p-0 flex-1 min-h-0">
+                    <div className="p-0 flex-1 min-h-0 pb-16">
                         <Table ref={patientsTableRef}>
                             <colgroup>
                                 <col style={{ width: '20%' }} />
@@ -542,7 +542,7 @@ export function PatientsTable({ patients, filter, onEdit, asCard = true }: { pat
                 </Card>
             ) : (
                 <>
-                    <div className="p-0 flex-1 min-h-0">
+                    <div className="p-0 flex-1 min-h-0 pb-16">
                         <Table ref={patientsTableRef}>
                             <colgroup>
                                 <col style={{ width: '20%' }} />

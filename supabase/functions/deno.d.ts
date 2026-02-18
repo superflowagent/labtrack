@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-
 type DenoEnv = {
     get(key: string): string | undefined
 }
@@ -18,12 +16,13 @@ declare global {
 }
 
 declare module "npm:stripe@12.6.0" {
-    const Stripe: any
+    // Reuse the installed `@types/stripe` package for typings
+    const Stripe: typeof import('stripe').default
     export default Stripe
 }
 
 declare module "https://deno.land/std@0.168.0/http/server.ts" {
-    export const serve: any
+    export const serve: DenoServe
 }
 
 export { }

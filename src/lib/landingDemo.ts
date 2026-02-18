@@ -1,7 +1,7 @@
 export const landingJobs = [
-    { id: '1', job: 'Prótesis fija', lab: 'Laboratorio Labtrack', status: 'En laboratorio' },
-    { id: '2', job: 'Carilla estética', lab: 'SmileCraft', status: 'En clinica (citado)' },
-    { id: '3', job: 'Puente superior', lab: 'OrtoLab', status: 'En clinica (sin citar)' },
+    { id: '1', job: 'Prótesis fija', lab: 'Laboratorio Labtrack' },
+    { id: '2', job: 'Carilla estética', lab: 'SmileCraft' },
+    { id: '3', job: 'Puente superior', lab: 'OrtoLab' },
 ]
 
 export const landingLabs = [

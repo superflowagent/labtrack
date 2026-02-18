@@ -181,9 +181,12 @@ export default function ClinicSettings({ asCard = false }: { asCard?: boolean } 
                                             const res = await fetch(endpoint, { method: 'POST', headers, body: JSON.stringify({ clinicId: clinic.id }) })
 
                                             if (!res.ok) {
-                                                let errBody: any = null
+                                                let errBody: unknown = null
                                                 try { errBody = await res.json() } catch { /* ignore non-json */ }
-                                                throw new Error(errBody?.error || res.statusText || 'No se pudo abrir el portal')
+                                                const errMsg = typeof errBody === 'object' && errBody !== null && 'error' in (errBody as Record<string, unknown>)
+                                                    ? ((errBody as Record<string, unknown>)['error'] as string | undefined)
+                                                    : undefined
+                                                throw new Error(errMsg || res.statusText || 'No se pudo abrir el portal')
                                             }
 
                                             const data = await res.json()

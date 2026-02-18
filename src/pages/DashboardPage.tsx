@@ -578,20 +578,16 @@ function DashboardPage() {
 
     const previous = job.status
 
-    // optimist update local state to avoid full reload
+    // Optimistic update local state
     updateLocalJobStatus(jobId, status)
-    setUpdatingStatusFor(jobId)
 
-    try {
-      await updateJob(jobId, { status })
-      // éxito: no mostrar snackbar para cambios desde el badge (actualización silenciosa)
-    } catch (err) {
-      // revert
-      updateLocalJobStatus(jobId, previous)
-      setSnackbar({ open: true, kind: 'job', item: null, message: err instanceof Error ? err.message : 'No se pudo actualizar' })
-    } finally {
-      setUpdatingStatusFor(null)
-    }
+    // No bloquear UI ni mostrar spinner
+    updateJob(jobId, { status })
+      .catch((err) => {
+        // revert
+        updateLocalJobStatus(jobId, previous)
+        setSnackbar({ open: true, kind: 'job', item: null, message: err instanceof Error ? err.message : 'No se pudo actualizar' })
+      })
   }
 
   const handleUndo = async () => {
@@ -894,7 +890,7 @@ function DashboardPage() {
                 <TableHead>Trabajo</TableHead>
                 <TableHead>Laboratorio</TableHead>
                 <TableHead>Especialista</TableHead>
-                <TableHead className="min-w-[220px]">Estado</TableHead>
+                <TableHead className="w-60 max-w-[16rem]">Estado</TableHead>
                 <TableHead>Fecha</TableHead>
                 <TableHead>Transcurrido</TableHead>
               </TableRow>
@@ -982,15 +978,14 @@ function DashboardPage() {
                       <TableCell>{job.job_description || 'Sin descripción'}</TableCell>
                       <TableCell>{meta.labName || '-'}</TableCell>
                       <TableCell>{meta.specName || '-'}</TableCell>
-                      <TableCell>
+                      <TableCell className="w-60 max-w-[16rem]">
                         <Select
                           value={job.status}
                           onValueChange={(v) => void handleQuickChangeStatus(job.id, v as JobStatus)}
                         >
                           <SelectTrigger
                             onClick={(e) => e.stopPropagation()}
-                            disabled={updatingStatusFor === job.id}
-                            className={getStatusPillClass(job.status)}
+                            className={getStatusPillClass(job.status) + ' w-full'}
                           >
                             <div className="flex items-center gap-2 w-full">
                               <div className="flex items-center gap-2 truncate w-full">

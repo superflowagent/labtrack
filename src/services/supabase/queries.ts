@@ -121,15 +121,14 @@ export const createPatient = async (payload: { name: string; phone?: string | nu
 export const updateJob = async (id: string, payload: Partial<NewJob>) => {
   await ensureActiveClinic()
   // payload sólo debe tener patient_id, no patient_name ni patient_phone
-  const { data, error } = await supabase
+  const { error } = await supabase
     .from('jobs')
     .update(payload)
     .eq('id', id)
-    .select('*')
-    .single()
 
   if (error) throw error
-  return data as Job
+  // No se necesita devolver el job actualizado
+  return true
 }
 
 export const deleteJob = async (id: string) => {

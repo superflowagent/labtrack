@@ -54,13 +54,15 @@ export async function POST(req: NextRequest) {
                 return_url: returnUrl,
             })
             return NextResponse.json({ url: session.url })
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error('Stripe error creating portal session:', err)
-            if (err?.code === 'resource_missing') return NextResponse.json({ error: 'Stripe customer not found' }, { status: 400 })
+            const isStripeError = (e: unknown): e is { code?: string } => typeof e === 'object' && e !== null && 'code' in (e as Record<string, unknown>)
+            if (isStripeError(err) && err.code === 'resource_missing') return NextResponse.json({ error: 'Stripe customer not found' }, { status: 400 })
             return NextResponse.json({ error: 'Stripe error' }, { status: 500 })
         }
-    } catch (err: any) {
-        return NextResponse.json({ error: err?.message || 'internal server error' }, { status: 500 })
+    } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err)
+        return NextResponse.json({ error: msg || 'internal server error' }, { status: 500 })
     }
 }
 

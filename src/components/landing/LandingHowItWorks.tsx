@@ -6,7 +6,7 @@ import { landingLabs } from '@/lib/landingDemo'
 import useInView from '@/hooks/useInView'
 
 export const LandingHowItWorks: React.FC = () => {
-    const [filters, setFilters] = useState<{ paciente?: string; laboratorioId?: string; estado?: string }>({})
+    const [filters, setFilters] = useState<{ paciente?: string; laboratorioId?: string }>({})
     const [ref, inView] = useInView({ threshold: 0.2 })
 
     return (
@@ -23,7 +23,7 @@ export const LandingHowItWorks: React.FC = () => {
                 <h3 className="text-xl font-semibold">2. Filtrar y programar</h3>
                 <p className="text-sm text-slate-600 mt-2">Filtra por estado o laboratorio para decidir rápido.</p>
                 <div className="mt-4">
-                    <Filtros filters={filters} setFilters={setFilters} labs={landingLabs} statuses={["En laboratorio", "En clinica (citado)", "En clinica (sin citar)", "Cerrado"]} />
+                    <Filtros filters={filters} setFilters={setFilters} labs={landingLabs} />
                 </div>
             </div>
 

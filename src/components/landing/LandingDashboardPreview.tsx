@@ -15,29 +15,17 @@ export const LandingDashboardPreview: React.FC = () => {
                     </div>
                 </div>
                 <div className="mt-6 space-y-3">
-                    {landingJobs.map((job) => {
-                        const pillClass =
-                            job.status === 'En laboratorio'
-                                ? 'rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700'
-                                : job.status === 'En clinica (sin citar)'
-                                    ? 'rounded-full bg-yellow-50 px-3 py-1 text-xs font-medium text-yellow-700'
-                                    : job.status === 'En clinica (citado)'
-                                        ? 'rounded-full bg-green-50 px-3 py-1 text-xs font-medium text-green-700'
-                                        : 'rounded-full bg-teal-50 px-3 py-1 text-xs font-medium text-teal-700'
-
-                        return (
-                            <div
-                                key={job.id}
-                                className="flex items-center justify-between rounded-xl border border-slate-200 bg-white/80 px-4 py-3 dark:bg-background dark:border-border"
-                            >
-                                <div>
-                                    <p className="text-sm font-medium text-slate-900 dark:text-white">{job.job}</p>
-                                    <p className="text-xs text-slate-500 dark:text-slate-400">{job.lab}</p>
-                                </div>
-                                <span className={pillClass}>{job.status}</span>
+                    {landingJobs.map((job) => (
+                        <div
+                            key={job.id}
+                            className="flex items-center justify-between rounded-xl border border-slate-200 bg-white/80 px-4 py-3 dark:bg-background dark:border-border"
+                        >
+                            <div>
+                                <p className="text-sm font-medium text-slate-900 dark:text-white">{job.job}</p>
+                                <p className="text-xs text-slate-500 dark:text-slate-400">{job.lab}</p>
                             </div>
-                        )
-                    })}
+                        </div>
+                    ))}
                 </div>
             </div>
         </div>

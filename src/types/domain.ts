@@ -1,9 +1,3 @@
-export type JobStatus =
-  | 'En laboratorio'
-  | 'En clinica (sin citar)'
-  | 'En clinica (citado)'
-  | 'Cerrado'
-
 export type Laboratory = {
   id: string
   name: string
@@ -37,6 +31,12 @@ export type Patient = {
   code: string | null
   clinic_id: string
 }
+
+export type JobStatus =
+  | 'En laboratorio'
+  | 'En clinica (sin citar)'
+  | 'En clinica (citado)'
+  | 'Cerrado'
 
 export type Job = {
   id: string
