@@ -63,7 +63,7 @@ serve(async (req: Request) => {
         let event: StripeType.Event | undefined;
 
         const payloadText = new TextDecoder().decode(buf);
-        
+
         if (STRIPE_WEBHOOK_SECRET && sig) {
             try {
                 // Note: stripe.webhooks.constructEvent may be async in some contexts
