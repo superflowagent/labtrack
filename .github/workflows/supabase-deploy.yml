@@ -62,7 +62,8 @@ jobs:
       - name: Apply database migrations
         run: |
           echo "Applying migrations to remote database..."
-          echo "y" | supabase db push || echo "No new migrations to apply or error occurred"
+          # fail the job if migrations cannot be applied — don't swallow errors
+          echo "y" | supabase db push || { echo "supabase db push failed" >&2; exit 1; }
 
 
 
