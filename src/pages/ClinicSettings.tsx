@@ -154,17 +154,40 @@ export default function ClinicSettings({ asCard = false }: { asCard?: boolean } 
                                     onClick={async () => {
                                         if (!clinic) return
 
-                                        // Si no es premium, ir al payment link
+                                        // Si no es premium, crear una sesión de checkout dinámica
                                         if (subscriptionStatus !== 'premium') {
-                                            const paymentLink = import.meta.env.MODE === 'production'
-                                                ? 'https://buy.stripe.com/dRm8wJ1fH9cCe7j72x4Vy01'
-                                                : 'https://buy.stripe.com/test_8x25kx8Xb5HugTSdyJ1oI08'
-                                            const params = new URLSearchParams({
-                                                client_reference_id: clinic.id,
-                                                ...(userEmail ? { 'prefilled_email': userEmail } : {})
-                                            })
-                                            const url = `${paymentLink}?${params.toString()}`
-                                            window.location.href = url
+                                            setPortalLoading(true)
+                                            try {
+                                                const { data: { session } } = await supabase.auth.getSession()
+                                                const token = session?.access_token
+
+                                                const endpoint = '/api/checkout'
+                                                const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+                                                if (token) headers['Authorization'] = `Bearer ${token}`
+
+                                                const res = await fetch(endpoint, {
+                                                    method: 'POST',
+                                                    headers,
+                                                    body: JSON.stringify({ clinicId: clinic.id, email: userEmail })
+                                                })
+
+                                                if (!res.ok) {
+                                                    let errBody: unknown = null
+                                                    try { errBody = await res.json() } catch { /* ignore non-json */ }
+                                                    const errMsg = typeof errBody === 'object' && errBody !== null && 'error' in (errBody as Record<string, unknown>)
+                                                        ? ((errBody as Record<string, unknown>)['error'] as string | undefined)
+                                                        : undefined
+                                                    throw new Error(errMsg || res.statusText || 'No se pudo crear la sesión de pago')
+                                                }
+
+                                                const data = await res.json()
+                                                if (data?.url) window.location.href = data.url
+                                            } catch (err: unknown) {
+                                                const msg = err instanceof Error ? err.message : String(err)
+                                                setError(msg)
+                                            } finally {
+                                                setPortalLoading(false)
+                                            }
                                             return
                                         }
 
