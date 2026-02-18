@@ -154,21 +154,17 @@ export default function ClinicSettings({ asCard = false }: { asCard?: boolean } 
                                     onClick={async () => {
                                         if (!clinic) return
 
-                                        // Si no es premium, crear una sesión de checkout dinámica
-                                        if (subscriptionStatus !== 'premium') {
-                                            setPortalLoading(true)
-                                            try {
-                                                const { data: { session } } = await supabase.auth.getSession()
-                                                const token = session?.access_token
-
-                                                const endpoint = '/api/checkout'
-                                                const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-                                                if (token) headers['Authorization'] = `Bearer ${token}`
-
-                                                const res = await fetch(endpoint, {
+                                        setPortalLoading(true)
+                                        try {
+                                            // If not premium, create a checkout session
+                                            if (subscriptionStatus !== 'premium') {
+                                                const res = await fetch('/api/checkout', {
                                                     method: 'POST',
-                                                    headers,
-                                                    body: JSON.stringify({ clinicId: clinic.id, email: userEmail })
+                                                    headers: { 'Content-Type': 'application/json' },
+                                                    body: JSON.stringify({
+                                                        clinicId: clinic.id,
+                                                        userEmail: userEmail || undefined,
+                                                    }),
                                                 })
 
                                                 if (!res.ok) {
@@ -177,23 +173,17 @@ export default function ClinicSettings({ asCard = false }: { asCard?: boolean } 
                                                     const errMsg = typeof errBody === 'object' && errBody !== null && 'error' in (errBody as Record<string, unknown>)
                                                         ? ((errBody as Record<string, unknown>)['error'] as string | undefined)
                                                         : undefined
-                                                    throw new Error(errMsg || res.statusText || 'No se pudo crear la sesión de pago')
+                                                    throw new Error(errMsg || res.statusText || 'No se pudo crear la sesión de checkout')
                                                 }
 
                                                 const data = await res.json()
-                                                if (data?.url) window.location.href = data.url
-                                            } catch (err: unknown) {
-                                                const msg = err instanceof Error ? err.message : String(err)
-                                                setError(msg)
-                                            } finally {
-                                                setPortalLoading(false)
+                                                if (data?.url) {
+                                                    window.location.href = data.url
+                                                }
+                                                return
                                             }
-                                            return
-                                        }
 
-                                        // premium -> open Stripe Customer Portal (server-side)
-                                        setPortalLoading(true)
-                                        try {
+                                            // premium -> open Stripe Customer Portal (server-side)
                                             const { data: { session } } = await supabase.auth.getSession()
                                             const token = session?.access_token
 
