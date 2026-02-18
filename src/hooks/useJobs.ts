@@ -51,8 +51,12 @@ export const useJobs = () => {
     [clinicId],
   )
 
+  const updateLocalJobStatus = useCallback((jobId: string, status: Job['status']) => {
+    setJobs((prev) => prev.map((j) => (j.id === jobId ? { ...j, status } : j)))
+  }, [])
+
   return useMemo(
-    () => ({ jobs, labs, specialists, patients, loading, error, reload: load, addJob }),
-    [jobs, labs, specialists, patients, loading, error, load, addJob],
+    () => ({ jobs, labs, specialists, patients, loading, error, reload: load, addJob, updateLocalJobStatus }),
+    [jobs, labs, specialists, patients, loading, error, load, addJob, updateLocalJobStatus],
   )
 }

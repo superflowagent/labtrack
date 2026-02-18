@@ -78,6 +78,22 @@ const getStatusTextClass = (status?: string) => {
   }
 }
 
+const getStatusPillClass = (status?: string) => {
+  // versión compacta del badge para la tabla (menor padding y altura)
+  switch (status) {
+    case 'En laboratorio':
+      return 'w-full inline-flex items-center justify-between gap-2 h-7 rounded-full bg-yellow-50 px-3 py-0.5 text-xs font-medium text-yellow-700'
+    case 'En clinica (sin citar)':
+      return 'w-full inline-flex items-center justify-between gap-2 h-7 rounded-full bg-orange-100 px-3 py-0.5 text-xs font-medium text-orange-800'
+    case 'En clinica (citado)':
+      return 'w-full inline-flex items-center justify-between gap-2 h-7 rounded-full bg-purple-50 px-3 py-0.5 text-xs font-medium text-purple-700'
+    case 'Cerrado':
+      return 'w-full inline-flex items-center justify-between gap-2 h-7 rounded-full bg-blue-50 px-3 py-0.5 text-xs font-medium text-blue-700'
+    default:
+      return 'w-full inline-flex items-center justify-between gap-2 h-7 rounded-full bg-teal-50 px-3 py-0.5 text-xs font-medium text-teal-700'
+  }
+}
+
 const getStatusIcon = (status: string) => {
   switch (status) {
     case 'En laboratorio':
@@ -121,7 +137,7 @@ const getEmptyJobForm = (): JobForm => ({
 
 function DashboardPage() {
   const [section, setSection] = useState<'trabajos' | 'laboratorios' | 'especialistas' | 'pacientes' | 'ajustes'>('trabajos')
-  const { jobs, labs, specialists, patients, loading, error, addJob, reload } = useJobs()
+  const { jobs, labs, specialists, patients, loading, error, addJob, reload, updateLocalJobStatus } = useJobs()
 
   const patientsById = useMemo(() => {
     const m: Record<string, typeof patients[number]> = {}
@@ -338,6 +354,7 @@ function DashboardPage() {
   const [patientFormError, setPatientFormError] = useState<string | null>(null)
 
   const [snackbar, setSnackbar] = useState<{ open: boolean; kind?: 'job' | 'lab' | 'spec' | 'patient'; item?: Job | Laboratory | Specialist | Patient | null; message?: string }>({ open: false })
+  const [updatingStatusFor, setUpdatingStatusFor] = useState<string | null>(null)
 
   const activeFiltersCount = useMemo(() => {
     let count = 0
@@ -552,6 +569,28 @@ function DashboardPage() {
       setFormError(err instanceof Error ? err.message : 'No se pudo eliminar')
     } finally {
       setDeletingJob(false)
+    }
+  }
+
+  const handleQuickChangeStatus = async (jobId: string, status: JobStatus) => {
+    const job = jobs.find((j) => j.id === jobId)
+    if (!job || job.status === status) return
+
+    const previous = job.status
+
+    // optimist update local state to avoid full reload
+    updateLocalJobStatus(jobId, status)
+    setUpdatingStatusFor(jobId)
+
+    try {
+      await updateJob(jobId, { status })
+      // éxito: no mostrar snackbar para cambios desde el badge (actualización silenciosa)
+    } catch (err) {
+      // revert
+      updateLocalJobStatus(jobId, previous)
+      setSnackbar({ open: true, kind: 'job', item: null, message: err instanceof Error ? err.message : 'No se pudo actualizar' })
+    } finally {
+      setUpdatingStatusFor(null)
     }
   }
 
@@ -889,7 +928,11 @@ function DashboardPage() {
                   return (
                     <TableRow
                       key={job.id}
-                      onClick={() => {
+                      onClick={(e) => {
+                        const target = e.target as HTMLElement
+                        // ignore clicks from interactive controls (selects/buttons/links) — especially necessary because Radix portals bubble
+                        if (target.closest('button, a, input, select, textarea, [role="button"]')) return
+
                         setEditingJobId(job.id);
                         setForm({
                           patient_id: job.patient_id || '',
@@ -940,25 +983,48 @@ function DashboardPage() {
                       <TableCell>{meta.labName || '-'}</TableCell>
                       <TableCell>{meta.specName || '-'}</TableCell>
                       <TableCell>
-                        <span
-                          className={
-                            job.status === 'En laboratorio'
-                              ? 'inline-flex items-center gap-1.5 rounded-full bg-yellow-50 px-3 py-1 text-xs font-medium text-yellow-700'
-                              : job.status === 'En clinica (sin citar)'
-                                ? 'inline-flex items-center gap-1.5 rounded-full bg-orange-100 px-3 py-1 text-xs font-medium text-orange-800'
-                                : job.status === 'En clinica (citado)'
-                                  ? 'inline-flex items-center gap-1.5 rounded-full bg-purple-50 px-3 py-1 text-xs font-medium text-purple-700'
-                                  : job.status === 'Cerrado'
-                                    ? 'inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700'
-                                    : 'inline-flex items-center gap-1.5 rounded-full bg-teal-50 px-3 py-1 text-xs font-medium text-teal-700'
-                          }
+                        <Select
+                          value={job.status}
+                          onValueChange={(v) => void handleQuickChangeStatus(job.id, v as JobStatus)}
                         >
-                          {job.status === 'En laboratorio' && <FlaskConical className="h-3 w-3" />}
-                          {job.status === 'En clinica (sin citar)' && <Clock className="h-3 w-3" />}
-                          {job.status === 'En clinica (citado)' && <CalendarCheck className="h-3 w-3" />}
-                          {job.status === 'Cerrado' && <Archive className="h-3 w-3" />}
-                          {job.status}
-                        </span>
+                          <SelectTrigger
+                            onClick={(e) => e.stopPropagation()}
+                            disabled={updatingStatusFor === job.id}
+                            className={getStatusPillClass(job.status)}
+                          >
+                            <div className="flex items-center gap-2 min-w-0">
+                              <SelectValue />
+
+                              {/* fixed-size placeholder for spinner to prevent width shift */}
+                              <span className="w-4 h-4 flex items-center justify-center">
+                                {updatingStatusFor === job.id ? (
+                                  <svg className="h-3 w-3 animate-spin text-current" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+                                    <circle cx="12" cy="12" r="10" strokeOpacity="0.25" />
+                                    <path d="M22 12a10 10 0 0 1-10 10" strokeLinecap="round" />
+                                  </svg>
+                                ) : (
+                                  <span className="h-3 w-3" aria-hidden />
+                                )}
+                              </span>
+                            </div>
+                          </SelectTrigger>
+
+                          <SelectContent position="popper" onClick={(e) => e.stopPropagation()}>
+                            <SelectItem value="En laboratorio" className={getStatusTextClass('En laboratorio')}>
+                              <span className="flex items-center gap-2">{getStatusIcon('En laboratorio')}En laboratorio</span>
+                            </SelectItem>
+                            <SelectItem value="En clinica (sin citar)" className={getStatusTextClass('En clinica (sin citar)')}>
+                              <span className="flex items-center gap-2">{getStatusIcon('En clinica (sin citar)')}En clinica (sin citar)</span>
+                            </SelectItem>
+                            <SelectItem value="En clinica (citado)" className={getStatusTextClass('En clinica (citado)')}>
+                              <span className="flex items-center gap-2">{getStatusIcon('En clinica (citado)')}En clinica (citado)</span>
+                            </SelectItem>
+                            <SelectSeparator />
+                            <SelectItem value="Cerrado" className={getStatusTextClass('Cerrado')}>
+                              <span className="flex items-center gap-2">{getStatusIcon('Cerrado')}Cerrado</span>
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
                       </TableCell>
                       <TableCell>{meta.orderDateText}</TableCell>
                       <TableCell>{meta.elapsedText}</TableCell>
