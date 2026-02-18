@@ -1512,7 +1512,7 @@ function DashboardPage() {
                 <Label>Estado</Label>
                 <Select value={form.status} onValueChange={(v) => setForm((prev) => ({ ...prev, status: v as JobStatus }))}>
                   <SelectTrigger className={form.status ? getStatusTextClass(form.status) : ''}>
-                    <SelectValue placeholder="Seleccionar estado" />
+                    <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     {STATUSES.map((st) => (
