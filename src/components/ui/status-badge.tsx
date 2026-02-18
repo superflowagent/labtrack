@@ -1,4 +1,4 @@
-/// <reference types="react/jsx-runtime" />
+import { type ReactNode } from 'react'
 import { cn } from '@/lib/utils'
 import { BadgeCheck, Clock, Archive, FlaskConical } from 'lucide-react'
 import type { JobStatus } from '@/types/domain'
@@ -10,7 +10,7 @@ const STATUS_COLORS: Record<JobStatus, string> = {
   'Cerrado': 'bg-slate-200 text-slate-600 border-slate-300',
 }
 
-const STATUS_ICONS: Record<JobStatus, JSX.Element> = {
+const STATUS_ICONS: Record<JobStatus, ReactNode> = {
   'En laboratorio': <FlaskConical className="w-4 h-4 mr-1" />,
   'En clinica (sin citar)': <Clock className="w-4 h-4 mr-1" />,
   'En clinica (citado)': <BadgeCheck className="w-4 h-4 mr-1" />,
