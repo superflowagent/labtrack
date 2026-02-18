@@ -886,12 +886,12 @@ function DashboardPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="pl-6">Paciente</TableHead>
+                <TableHead>Paciente</TableHead>
                 <TableHead>Trabajo</TableHead>
                 <TableHead>Laboratorio</TableHead>
                 <TableHead>Especialista</TableHead>
                 <TableHead className="w-60 max-w-[16rem]">Estado</TableHead>
-                <TableHead>Fecha</TableHead>
+                <TableHead className="pl-8">Fecha</TableHead>
                 <TableHead>Transcurrido</TableHead>
               </TableRow>
             </TableHeader>
@@ -943,7 +943,7 @@ function DashboardPage() {
                       }}
                       className="cursor-pointer hover:bg-slate-50"
                     >
-                      <TableCell className="font-medium pl-6">
+                      <TableCell className="font-medium">
                         <div className="flex items-center gap-3">
                           <span className="w-10 text-right text-xs text-slate-500">{meta.patientCode || '-'}</span>
                           <span>{meta.patientName || '-'}</span>
@@ -1023,7 +1023,7 @@ function DashboardPage() {
                           </SelectContent>
                         </Select>
                       </TableCell>
-                      <TableCell>{meta.orderDateText}</TableCell>
+                      <TableCell className="pl-8">{meta.orderDateText}</TableCell>
                       <TableCell>{meta.elapsedText}</TableCell>
                     </TableRow>
                   );
