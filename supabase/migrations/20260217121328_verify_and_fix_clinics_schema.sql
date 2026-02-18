@@ -47,6 +47,28 @@ BEGIN
         RAISE NOTICE 'Added column stripe_trial_end';
     END IF;
 
+    -- Add trial_ends_at if missing (new column used by application)
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'clinics'
+          AND column_name = 'trial_ends_at'
+    ) THEN
+        ALTER TABLE "public"."clinics" ADD COLUMN "trial_ends_at" timestamp with time zone;
+        RAISE NOTICE 'Added column trial_ends_at';
+
+        -- backfill from stripe_trial_end when available
+        IF EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_schema = 'public'
+              AND table_name = 'clinics'
+              AND column_name = 'stripe_trial_end'
+        ) THEN
+            UPDATE public.clinics SET trial_ends_at = stripe_trial_end WHERE trial_ends_at IS NULL AND stripe_trial_end IS NOT NULL;
+            RAISE NOTICE 'Backfilled trial_ends_at from stripe_trial_end';
+        END IF;
+    END IF;
+
     -- Add manual_premium if missing
     IF NOT EXISTS (
         SELECT 1 FROM information_schema.columns 
