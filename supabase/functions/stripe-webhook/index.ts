@@ -17,19 +17,17 @@ const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY")!, {
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? Deno.env.get("VITE_SUPABASE_URL") ?? 'http://127.0.0.1:54331';
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") ?? Deno.env.get("VITE_SUPABASE_ANON_KEY") ?? 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0';
+const SERVICE_ROLE_KEY = Deno.env.get("SERVICE_ROLE_KEY") ?? Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 const STRIPE_WEBHOOK_SECRET = Deno.env.get("STRIPE_WEBHOOK_SECRET");
 
-// Initialize Supabase client with service role (admin) for mutations
-// In Edge Functions, use SUPABASE_ANON_KEY to avoid requiring SERVICE_ROLE_KEY
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+// Use service role for webhook mutations when available; anon will be blocked by RLS.
+const supabaseKey = SERVICE_ROLE_KEY ?? SUPABASE_ANON_KEY;
+const supabase = createClient(SUPABASE_URL, supabaseKey, {
     auth: {
         persistSession: false,
         autoRefreshToken: false,
     },
 });
-
-// DEBUG: print presence of critical env vars (local only)
-console.log('env: STRIPE_WEBHOOK_SECRET set:', STRIPE_WEBHOOK_SECRET ? String(STRIPE_WEBHOOK_SECRET).slice(0, 10) + '...' : 'NOT SET', 'SUPABASE_ANON_KEY set:', Boolean(SUPABASE_ANON_KEY));
 
 serve(async (req: Request) => {
     try {
@@ -37,27 +35,13 @@ serve(async (req: Request) => {
             return new Response("Method Not Allowed", { status: 405 });
         }
 
-        if (!SUPABASE_ANON_KEY) {
-            console.error("Missing SUPABASE_ANON_KEY in function env");
+        if (!supabaseKey) {
+            console.error("Missing Supabase key in function env (SERVICE_ROLE_KEY or SUPABASE_ANON_KEY)");
             return new Response(JSON.stringify({ error: "server misconfigured" }), { status: 500 });
         }
 
         const sig = req.headers.get("stripe-signature");
         const buf = await req.arrayBuffer();
-        console.log('STRIPE_WEBHOOK_SECRET prefix:', STRIPE_WEBHOOK_SECRET ? String(STRIPE_WEBHOOK_SECRET).slice(0, 10) + '...' : 'none');
-        const textSample = new TextDecoder().decode(buf).slice(0, 200);
-        console.log('stripe-signature header present:', Boolean(sig), sig ? String(sig).slice(0, 40) : '');
-        console.log('raw body length:', buf.byteLength, 'body-sample:', textSample.replace(/(\r|\n)/g, '\\n').slice(0, 200));
-
-        // debug: return raw body when ?debug=1 (local only)
-        try {
-            const reqUrl = new URL(req.url);
-            if (reqUrl.searchParams.get('debug') === '1') {
-                return new Response(new TextDecoder().decode(buf), { status: 200, headers: { 'Content-Type': 'application/json' } });
-            }
-        } catch {
-            /* ignore */
-        }
 
         // `event` will be populated below (signature-verified or parsed)
         let event: StripeType.Event | undefined;
@@ -67,7 +51,6 @@ serve(async (req: Request) => {
         if (STRIPE_WEBHOOK_SECRET && sig) {
             try {
                 // Note: stripe.webhooks.constructEvent may be async in some contexts
-                console.log('Attempting to verify Stripe signature with secret:', String(STRIPE_WEBHOOK_SECRET).slice(0, 15) + '...');
                 try {
                     event = await stripe.webhooks.constructEventAsync(payloadText, sig, STRIPE_WEBHOOK_SECRET);
                 } catch {
@@ -86,7 +69,7 @@ serve(async (req: Request) => {
             }
         } else {
             // Fallback for local dev when STRIPE_WEBHOOK_SECRET isn't provided
-            console.warn("STRIPE_WEBHOOK_SECRET not set or no signature header — skipping signature verification (local dev fallback)");
+            console.warn("STRIPE_WEBHOOK_SECRET not set or no signature header - skipping signature verification (local dev fallback)");
             try {
                 event = JSON.parse(payloadText) as StripeType.Event;
             } catch (err) {
@@ -99,41 +82,33 @@ serve(async (req: Request) => {
             if (event.type === "checkout.session.completed") {
                 const session = event.data.object as StripeType.Checkout.Session;
                 const clinicId = session.client_reference_id;
-                console.log("checkout.session.completed - clinicId:", clinicId, "customer:", session.customer);
-                
                 if (clinicId) {
-                    const { data, error } = await supabase
+                    const { error } = await supabase
                         .from('clinics')
                         .update({ is_premium: true, stripe_customer_id: session.customer ?? null })
                         .eq('id', clinicId)
                         .select();
                     if (error) {
                         console.error("Error updating clinic (checkout.session.completed):", error);
-                    } else {
-                        console.log("✓ Successfully updated clinic to premium:", clinicId, "updated rows:", data?.length);
                     }
                 } else {
-                    console.warn("⚠️ checkout.session.completed but NO client_reference_id!");
-                }
+                    console.warn("checkout.session.completed without client_reference_id");
                 }
             } else if (event.type === "customer.subscription.deleted") {
                 const subscription = event.data.object as StripeType.Subscription;
                 const customerId = subscription.customer as string | undefined;
                 if (customerId) {
-                    const { data, error } = await supabase
+                    const { error } = await supabase
                         .from('clinics')
                         .update({ is_premium: false })
                         .eq('stripe_customer_id', customerId)
                         .select();
                     if (error) {
                         console.error("Error updating clinic (customer.subscription.deleted):", error);
-                    } else {
-                        console.log("Updated clinic (customer.subscription.deleted):", data?.length);
                     }
                 }
             } else {
-                // Log and ignore other event types to avoid 503 from unhandled cases
-                console.log("Unhandled Stripe event type (ignored):", event.type);
+                // Ignore other event types
             }
         } catch (err) {
             console.error("Error handling Stripe event:", err);

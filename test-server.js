@@ -26,20 +26,11 @@ app.use((req, res, next) => {
     next();
 });
 
-console.log('Creating test server...');
-
 // Middleware
 app.use(express.json());
-console.log('Middleware registered');
-
-// Routes
-app.get('/test', (req, res) => {
-    console.log('GET /test called');
-    res.json({ status: 'ok' });
-});
 
 // Dev helper: create a Stripe Billing Portal session for a clinic
-app.post('/api/portal', express.json(), async (req, res) => {
+app.post('/api/portal', async (req, res) => {
     try {
         const { clinicId } = req.body || {}
         if (!clinicId) return res.status(400).json({ error: 'clinicId is required' })
@@ -84,27 +75,23 @@ app.post('/api/portal', express.json(), async (req, res) => {
 });
 
 // Dev helper: create a Stripe checkout session for a clinic subscription
-app.post('/api/checkout', express.json(), async (req, res) => {
+app.post('/api/checkout', async (req, res) => {
     try {
         const { clinicId, userEmail } = req.body || {}
-        console.log('POST /api/checkout - clinicId:', clinicId, 'userEmail:', userEmail);
-        
         if (!clinicId) return res.status(400).json({ error: 'clinicId is required' })
 
         const stripeSecret = process.env.STRIPE_SECRET_KEY
         if (!stripeSecret) return res.status(500).json({ error: 'Stripe not configured' })
-        
+
         const priceId = process.env.STRIPE_PRICE_ID
         if (!priceId) return res.status(500).json({ error: 'STRIPE_PRICE_ID not configured' })
-
-        console.log('Using STRIPE_PRICE_ID:', priceId);
 
         const Stripe = (await import('stripe')).default
         const stripe = new Stripe(stripeSecret, { apiVersion: '2026-01-28.clover' })
 
         const origin = req.headers.origin || process.env.VITE_APP_URL || 'http://localhost:5173'
         const baseUrl = String(origin).replace(/\/$/, '')
-        
+
         const sessionParams = {
             mode: 'subscription',
             payment_method_types: ['card'],
@@ -120,25 +107,15 @@ app.post('/api/checkout', express.json(), async (req, res) => {
             // This is the key: storing the clinic ID in the session so the webhook can use it
             client_reference_id: clinicId,
         };
-        
-        console.log('Creating Stripe session with params:', JSON.stringify(sessionParams, null, 2));
-        const session = await stripe.checkout.sessions.create(sessionParams);
-        console.log('✓ Stripe session created:', session.id, 'url:', session.url);
 
+        const session = await stripe.checkout.sessions.create(sessionParams);
         return res.json({ sessionId: session.id, url: session.url })
     } catch (err) {
         console.error('Stripe checkout session creation error:', err)
-        return res.status(500).json({ 
-            error: err instanceof Error ? err.message : 'Failed to create checkout session' 
+        return res.status(500).json({
+            error: err instanceof Error ? err.message : 'Failed to create checkout session'
         })
     }
 });
 
-app.post('/poll/:id', (req, res) => {
-    console.log('POST /poll/:id called with id:', req.params.id);
-    res.json({ id: req.params.id });
-});
-
-app.listen(3001, () => {
-    console.log('Server listening on port 3001');
-});
+app.listen(3001);
