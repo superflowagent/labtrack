@@ -22,12 +22,6 @@ const STRIPE_WEBHOOK_SECRET = Deno.env.get("STRIPE_WEBHOOK_SECRET");
 
 // Use service role for webhook mutations when available; anon will be blocked by RLS.
 const supabaseKey = SERVICE_ROLE_KEY ?? SUPABASE_ANON_KEY;
-const supabase = createClient(SUPABASE_URL, supabaseKey, {
-    auth: {
-        persistSession: false,
-        autoRefreshToken: false,
-    },
-});
 
 serve(async (req: Request) => {
     try {
@@ -39,6 +33,13 @@ serve(async (req: Request) => {
             console.error("Missing Supabase key in function env (SERVICE_ROLE_KEY or SUPABASE_ANON_KEY)");
             return new Response(JSON.stringify({ error: "server misconfigured" }), { status: 500 });
         }
+
+        const supabase = createClient(SUPABASE_URL, supabaseKey, {
+            auth: {
+                persistSession: false,
+                autoRefreshToken: false,
+            },
+        });
 
         const sig = req.headers.get("stripe-signature");
         const buf = await req.arrayBuffer();
