@@ -94,6 +94,12 @@ jobs:
           echo "Deploying Edge Functions to Supabase project: $SUPABASE_PROJECT_REF"
           echo "y" | supabase functions deploy --prune
 
+      - name: Deploy stripe-webhook without JWT verification
+        if: steps.check_functions.outputs.functions_present == 'true'
+        run: |
+          echo "Deploying stripe-webhook with verify_jwt disabled"
+          echo "y" | supabase functions deploy stripe-webhook --no-verify-jwt
+
       - name: List deployed functions (verification)
         if: steps.check_functions.outputs.functions_present == 'true'
         run: supabase functions list
