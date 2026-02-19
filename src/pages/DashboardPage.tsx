@@ -245,6 +245,8 @@ function DashboardPage() {
   const [formError, setFormError] = useState<string | null>(null)
   // patient select local state
   const [patientQuery, setPatientQuery] = useState('')
+  const [pendingLaboratorySelection, setPendingLaboratorySelection] = useState(false)
+  const [pendingSpecialistSelection, setPendingSpecialistSelection] = useState(false)
   const [pendingPatientSelection, setPendingPatientSelection] = useState(false)
 
   // === Onboarding: mostrar spotlight sobre "Nuevo trabajo" la primera vez que un usuario entra al dashboard ===
@@ -650,22 +652,33 @@ function DashboardPage() {
     setLabFormError(null)
     try {
       if (!labForm.name.trim()) throw new Error('El nombre del laboratorio es obligatorio')
-      if (editingLabId) {
-        await updateLaboratory(editingLabId, {
+      const saved = editingLabId
+        ? await updateLaboratory(editingLabId, {
           name: labForm.name.trim(),
           phone: labForm.phone || null,
           email: labForm.email || null,
         })
-      } else {
-        await createLaboratory({
+        : await createLaboratory({
           name: labForm.name.trim(),
           phone: labForm.phone || null,
           email: labForm.email || null,
         })
+
+      let reopenJobModal = false
+      if (pendingLaboratorySelection && saved?.id) {
+        setForm((prev) => ({ ...prev, laboratory_id: saved.id }))
+        reopenJobModal = true
       }
+
       setLabOpen(false)
       setEditingLabId(null)
       setLabForm({ name: '', phone: '', email: '' })
+
+      if (reopenJobModal) {
+        setOpen(true)
+        setPendingLaboratorySelection(false)
+      }
+
       await reload()
     } catch (err) {
       setLabFormError(err instanceof Error ? err.message : 'No se pudo guardar')
@@ -697,24 +710,35 @@ function DashboardPage() {
     setSpecFormError(null)
     try {
       if (!specForm.name.trim()) throw new Error('El nombre del especialista es obligatorio')
-      if (editingSpecId) {
-        await updateSpecialist(editingSpecId, {
+      const saved = editingSpecId
+        ? await updateSpecialist(editingSpecId, {
           name: specForm.name.trim(),
           specialty: specForm.specialty || null,
           phone: specForm.phone || null,
           email: specForm.email || null,
         })
-      } else {
-        await createSpecialist({
+        : await createSpecialist({
           name: specForm.name.trim(),
           specialty: specForm.specialty || null,
           phone: specForm.phone || null,
           email: specForm.email || null,
         })
+
+      let reopenJobModal = false
+      if (pendingSpecialistSelection && saved?.id) {
+        setForm((prev) => ({ ...prev, specialist_id: saved.id }))
+        reopenJobModal = true
       }
+
       setSpecOpen(false)
       setEditingSpecId(null)
       setSpecForm({ name: '', specialty: '', phone: '', email: '' })
+
+      if (reopenJobModal) {
+        setOpen(true)
+        setPendingSpecialistSelection(false)
+      }
+
       await reload()
     } catch (err) {
       setSpecFormError(err instanceof Error ? err.message : 'No se pudo guardar')
@@ -1120,81 +1144,6 @@ function DashboardPage() {
   } else if (section === 'laboratorios') {
     sectionContent = (
       <Card className="border-slate-200 bg-white/80 p-5 mb-0 flex flex-col flex-1 min-h-0 overflow-hidden">
-        <div className="flex flex-wrap items-center justify-end gap-4">
-          <Dialog
-            open={labOpen}
-            onOpenChange={(value) => {
-              setLabOpen(value)
-              if (!value) {
-                setEditingLabId(null)
-                setLabForm({ name: '', phone: '', email: '' })
-              }
-            }}
-          >
-            <DialogContent className="sm:max-w-lg">
-              <DialogHeader>
-                <DialogTitle>{editingLabId ? 'Editar laboratorio' : 'Nuevo laboratorio'}</DialogTitle>
-                <DialogDescription>
-                  Completa la información del {editingLabId ? 'laboratorio' : 'nuevo laboratorio'}
-                </DialogDescription>
-              </DialogHeader>
-              <form
-                onSubmit={async (event) => {
-                  event.preventDefault()
-                  await handleCreateLab()
-                }}
-                className="space-y-4"
-              >
-                <div className="space-y-2">
-                  <Label>Nombre</Label>
-                  <Input
-                    value={labForm.name}
-                    onChange={(event) => setLabForm((prev) => ({ ...prev, name: event.target.value }))}
-                    placeholder="Nombre del laboratorio"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Móvil</Label>
-                  <Input
-                    value={labForm.phone}
-                    onChange={(event) => setLabForm((prev) => ({ ...prev, phone: event.target.value }))}
-                    placeholder="Teléfono de contacto"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Email</Label>
-                  <Input
-                    value={labForm.email}
-                    onChange={(event) => setLabForm((prev) => ({ ...prev, email: event.target.value }))}
-                    placeholder="Email del laboratorio"
-                  />
-                </div>
-                {labFormError && <p className="text-sm text-rose-600">{labFormError}</p>}
-                <div className="flex gap-4">
-                  {editingLabId && (
-                    <Button
-                      type="button"
-                      variant="destructive"
-                      className="flex-1"
-                      disabled={labSaving || deletingLab}
-                      onClick={handleDeleteLab}
-                    >
-                      {deletingLab ? 'Eliminando...' : 'Eliminar laboratorio'}
-                    </Button>
-                  )}
-                  <Button
-                    type="submit"
-                    disabled={labSaving || deletingLab}
-                    className="flex-1 bg-teal-600 text-white hover:bg-teal-500"
-                  >
-                    {labSaving ? 'Guardando...' : editingLabId ? 'Guardar cambios' : 'Guardar laboratorio'}
-                  </Button>
-                </div>
-              </form>
-            </DialogContent>
-          </Dialog>
-        </div>
-
         <Filtros
           asCard={false}
           filters={labsFilters}
@@ -1207,6 +1156,7 @@ function DashboardPage() {
           labs={labs}
           filter={labsFilters.paciente ?? ''}
           onEdit={(lab) => {
+            setPendingLaboratorySelection(false)
             setEditingLabId(lab.id)
             setLabForm({ name: lab.name, phone: lab.phone || '', email: lab.email || '' })
             setLabOpen(true)
@@ -1217,89 +1167,6 @@ function DashboardPage() {
   } else if (section === 'especialistas') {
     sectionContent = (
       <Card className="border-slate-200 bg-white/80 p-5 mb-0 flex flex-col flex-1 min-h-0 overflow-hidden">
-        <div className="flex flex-wrap items-center justify-end gap-4">
-          <Dialog
-            open={specOpen}
-            onOpenChange={(value) => {
-              setSpecOpen(value)
-              if (!value) {
-                setEditingSpecId(null)
-                setSpecForm({ name: '', specialty: '', phone: '', email: '' })
-              }
-            }}
-          >
-            <DialogContent className="sm:max-w-lg">
-              <DialogHeader>
-                <DialogTitle>{editingSpecId ? 'Editar especialista' : 'Nuevo especialista'}</DialogTitle>
-                <DialogDescription>
-                  Completa la información del {editingSpecId ? 'especialista' : 'nuevo especialista'}
-                </DialogDescription>
-              </DialogHeader>
-              <form
-                onSubmit={async (event) => {
-                  event.preventDefault()
-                  await handleCreateSpec()
-                }}
-                className="space-y-4"
-              >
-                <div className="space-y-2">
-                  <Label>Nombre</Label>
-                  <Input
-                    value={specForm.name}
-                    onChange={(event) => setSpecForm((prev) => ({ ...prev, name: event.target.value }))}
-                    placeholder="Nombre del especialista"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Especialidad</Label>
-                  <Input
-                    value={specForm.specialty}
-                    onChange={(event) => setSpecForm((prev) => ({ ...prev, specialty: event.target.value }))}
-                    placeholder="Especialidad"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Móvil</Label>
-                  <Input
-                    value={specForm.phone}
-                    onChange={(event) => setSpecForm((prev) => ({ ...prev, phone: event.target.value }))}
-                    placeholder="Teléfono de contacto"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Email</Label>
-                  <Input
-                    value={specForm.email}
-                    onChange={(event) => setSpecForm((prev) => ({ ...prev, email: event.target.value }))}
-                    placeholder="Email del especialista"
-                  />
-                </div>
-                {specFormError && <p className="text-sm text-rose-600">{specFormError}</p>}
-                <div className="flex gap-4">
-                  {editingSpecId && (
-                    <Button
-                      type="button"
-                      variant="destructive"
-                      className="flex-1"
-                      disabled={specSaving || deletingSpec}
-                      onClick={handleDeleteSpec}
-                    >
-                      {deletingSpec ? 'Eliminando...' : 'Eliminar especialista'}
-                    </Button>
-                  )}
-                  <Button
-                    type="submit"
-                    disabled={specSaving || deletingSpec}
-                    className="flex-1 bg-teal-600 text-white hover:bg-teal-500"
-                  >
-                    {specSaving ? 'Guardando...' : editingSpecId ? 'Guardar cambios' : 'Guardar especialista'}
-                  </Button>
-                </div>
-              </form>
-            </DialogContent>
-          </Dialog>
-        </div>
-
         <Filtros
           asCard={false}
           filters={specialistsFilters}
@@ -1312,6 +1179,7 @@ function DashboardPage() {
           specialists={specialists}
           filter={specialistsFilters.paciente ?? ''}
           onEdit={(spec) => {
+            setPendingSpecialistSelection(false)
             setEditingSpecId(spec.id)
             setSpecForm({
               name: spec.name,
@@ -1391,14 +1259,14 @@ function DashboardPage() {
               }
               if (section === 'laboratorios') {
                 return (
-                  <Button className="bg-teal-600 text-white hover:bg-teal-500" onClick={() => { setEditingLabId(null); setLabForm({ name: '', phone: '', email: '' }); setLabOpen(true); }}>
+                  <Button className="bg-teal-600 text-white hover:bg-teal-500" onClick={() => { setEditingLabId(null); setLabForm({ name: '', phone: '', email: '' }); setLabOpen(true); setPendingLaboratorySelection(false); }}>
                     <FlaskConical className="mr-2 h-4 w-4" /> Nuevo laboratorio
                   </Button>
                 )
               }
               if (section === 'especialistas') {
                 return (
-                  <Button className="bg-teal-600 text-white hover:bg-teal-500" onClick={() => { setEditingSpecId(null); setSpecForm({ name: '', specialty: '', phone: '', email: '' }); setSpecOpen(true); }}>
+                  <Button className="bg-teal-600 text-white hover:bg-teal-500" onClick={() => { setEditingSpecId(null); setSpecForm({ name: '', specialty: '', phone: '', email: '' }); setSpecOpen(true); setPendingSpecialistSelection(false); }}>
                     <Stethoscope className="mr-2 h-4 w-4" /> Nuevo especialista
                   </Button>
                 )
@@ -1531,7 +1399,18 @@ function DashboardPage() {
 
               <div className="space-y-2">
                 <Label>Laboratorio</Label>
-                <Select value={form.laboratory_id || ''} onValueChange={(v) => setForm((prev) => ({ ...prev, laboratory_id: v === '__none' ? '' : v }))}>
+                <Select
+                  value={form.laboratory_id || ''}
+                  onValueChange={(v) => {
+                    if (v === '__new') {
+                      setPendingLaboratorySelection(true)
+                      setOpen(false)
+                      setLabOpen(true)
+                      return
+                    }
+                    setForm((prev) => ({ ...prev, laboratory_id: v === '__none' ? '' : v }))
+                  }}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Sin laboratorio" />
                   </SelectTrigger>
@@ -1540,13 +1419,26 @@ function DashboardPage() {
                     {labs.map((lab) => (
                       <SelectItem key={lab.id} value={lab.id}>{lab.name}</SelectItem>
                     ))}
+                    <SelectSeparator />
+                    <SelectItem value="__new">+ Nuevo laboratorio</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
               <div className="space-y-2">
                 <Label>Especialista</Label>
-                <Select value={form.specialist_id || ''} onValueChange={(v) => setForm((prev) => ({ ...prev, specialist_id: v === '__none' ? '' : v }))}>
+                <Select
+                  value={form.specialist_id || ''}
+                  onValueChange={(v) => {
+                    if (v === '__new') {
+                      setPendingSpecialistSelection(true)
+                      setOpen(false)
+                      setSpecOpen(true)
+                      return
+                    }
+                    setForm((prev) => ({ ...prev, specialist_id: v === '__none' ? '' : v }))
+                  }}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Sin especialista" />
                   </SelectTrigger>
@@ -1555,6 +1447,8 @@ function DashboardPage() {
                     {specialists.map((s) => (
                       <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
                     ))}
+                    <SelectSeparator />
+                    <SelectItem value="__new">+ Nuevo especialista</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -1612,6 +1506,166 @@ function DashboardPage() {
 
               <Button type="submit" disabled={saving || deletingJob} className="flex-1 bg-teal-600 text-white hover:bg-teal-500">
                 {saving ? 'Guardando...' : editingJobId ? 'Guardar cambios' : 'Guardar trabajo'}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={labOpen}
+        onOpenChange={(value) => {
+          setLabOpen(value)
+          if (!value) {
+            const wasPending = pendingLaboratorySelection
+            setEditingLabId(null)
+            setLabForm({ name: '', phone: '', email: '' })
+            setPendingLaboratorySelection(false)
+            if (wasPending) setOpen(true)
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{editingLabId ? 'Editar laboratorio' : 'Nuevo laboratorio'}</DialogTitle>
+            <DialogDescription>
+              Completa la información del {editingLabId ? 'laboratorio' : 'nuevo laboratorio'}
+            </DialogDescription>
+          </DialogHeader>
+          <form
+            onSubmit={async (event) => {
+              event.preventDefault()
+              await handleCreateLab()
+            }}
+            className="space-y-4"
+          >
+            <div className="space-y-2">
+              <Label>Nombre</Label>
+              <Input
+                value={labForm.name}
+                onChange={(event) => setLabForm((prev) => ({ ...prev, name: event.target.value }))}
+                placeholder="Nombre del laboratorio"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Móvil</Label>
+              <Input
+                value={labForm.phone}
+                onChange={(event) => setLabForm((prev) => ({ ...prev, phone: event.target.value }))}
+                placeholder="Teléfono de contacto"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Email</Label>
+              <Input
+                value={labForm.email}
+                onChange={(event) => setLabForm((prev) => ({ ...prev, email: event.target.value }))}
+                placeholder="Email del laboratorio"
+              />
+            </div>
+            {labFormError && <p className="text-sm text-rose-600">{labFormError}</p>}
+            <div className="flex gap-4">
+              {editingLabId && (
+                <Button
+                  type="button"
+                  variant="destructive"
+                  className="flex-1"
+                  disabled={labSaving || deletingLab}
+                  onClick={handleDeleteLab}
+                >
+                  {deletingLab ? 'Eliminando...' : 'Eliminar laboratorio'}
+                </Button>
+              )}
+              <Button
+                type="submit"
+                disabled={labSaving || deletingLab}
+                className="flex-1 bg-teal-600 text-white hover:bg-teal-500"
+              >
+                {labSaving ? 'Guardando...' : editingLabId ? 'Guardar cambios' : 'Guardar laboratorio'}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={specOpen}
+        onOpenChange={(value) => {
+          setSpecOpen(value)
+          if (!value) {
+            const wasPending = pendingSpecialistSelection
+            setEditingSpecId(null)
+            setSpecForm({ name: '', specialty: '', phone: '', email: '' })
+            setPendingSpecialistSelection(false)
+            if (wasPending) setOpen(true)
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{editingSpecId ? 'Editar especialista' : 'Nuevo especialista'}</DialogTitle>
+            <DialogDescription>
+              Completa la información del {editingSpecId ? 'especialista' : 'nuevo especialista'}
+            </DialogDescription>
+          </DialogHeader>
+          <form
+            onSubmit={async (event) => {
+              event.preventDefault()
+              await handleCreateSpec()
+            }}
+            className="space-y-4"
+          >
+            <div className="space-y-2">
+              <Label>Nombre</Label>
+              <Input
+                value={specForm.name}
+                onChange={(event) => setSpecForm((prev) => ({ ...prev, name: event.target.value }))}
+                placeholder="Nombre del especialista"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Especialidad</Label>
+              <Input
+                value={specForm.specialty}
+                onChange={(event) => setSpecForm((prev) => ({ ...prev, specialty: event.target.value }))}
+                placeholder="Especialidad"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Móvil</Label>
+              <Input
+                value={specForm.phone}
+                onChange={(event) => setSpecForm((prev) => ({ ...prev, phone: event.target.value }))}
+                placeholder="Teléfono de contacto"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Email</Label>
+              <Input
+                value={specForm.email}
+                onChange={(event) => setSpecForm((prev) => ({ ...prev, email: event.target.value }))}
+                placeholder="Email del especialista"
+              />
+            </div>
+            {specFormError && <p className="text-sm text-rose-600">{specFormError}</p>}
+            <div className="flex gap-4">
+              {editingSpecId && (
+                <Button
+                  type="button"
+                  variant="destructive"
+                  className="flex-1"
+                  disabled={specSaving || deletingSpec}
+                  onClick={handleDeleteSpec}
+                >
+                  {deletingSpec ? 'Eliminando...' : 'Eliminar especialista'}
+                </Button>
+              )}
+              <Button
+                type="submit"
+                disabled={specSaving || deletingSpec}
+                className="flex-1 bg-teal-600 text-white hover:bg-teal-500"
+              >
+                {specSaving ? 'Guardando...' : editingSpecId ? 'Guardar cambios' : 'Guardar especialista'}
               </Button>
             </div>
           </form>

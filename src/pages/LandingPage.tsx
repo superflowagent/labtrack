@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { useRef } from 'react'
 import { ArrowDown, Check } from 'lucide-react'
 import { Logo } from '@/components/Logo'
 import { Button } from '@/components/ui/button'
@@ -8,6 +9,7 @@ import { LandingJobsTable } from '@/components/landing/LandingJobsTable'
 import { HeroBackground } from '@/components/landing/HeroBackground'
 import { LandingFooter } from '@/components/landing/LandingFooter'
 import { SeguimientoInteligente } from '@/components/landing/SeguimientoInteligente.tsx'
+import { HandDrawnUnderline } from '@/components/landing/HandDrawnUnderline'
 import { useInView } from '@/hooks/useInView'
 
 const planFeatures = [
@@ -16,12 +18,16 @@ const planFeatures = [
     description: 'Para que no se te quede ni un trabajo sin trackear',
   },
   {
-    title: 'Gestión multi-especialista',
-    description: 'Asigna a los doctores de la clínica a los trabajos',
+    title: 'Reducción de Errores',
+    description: 'Evita citas fallidas por falta de material de laboratorio.',
   },
   {
     title: 'Base de datos de laboratorios',
     description: 'Gestiona tus proveedores en un solo lugar',
+  },
+  {
+    title: 'Gestión multi-especialista',
+    description: 'Asigna a los doctores de la clínica a los trabajos',
   },
   {
     title: 'Cumplimiento RGPD/LOPD',
@@ -30,10 +36,6 @@ const planFeatures = [
   {
     title: 'Soporte prioritario 24/7',
     description: 'Email o teléfono',
-  },
-  {
-    title: 'Reducción de Errores',
-    description: 'Evita citas fallidas por falta de material de laboratorio.',
   },
 ]
 
@@ -73,6 +75,16 @@ const testimonials = [
 const testimonialsMarquee = [...testimonials, ...testimonials]
 
 export const LandingPage = () => {
+  const trackRef = useRef<HTMLDivElement | null>(null)
+  const hoverCountRef = useRef<number>(0)
+  const handleCardPointerEnter = () => {
+    hoverCountRef.current += 1
+    if (trackRef.current) trackRef.current.classList.add('is-paused')
+  }
+  const handleCardPointerLeave = () => {
+    hoverCountRef.current = Math.max(0, hoverCountRef.current - 1)
+    if (hoverCountRef.current === 0 && trackRef.current) trackRef.current.classList.remove('is-paused')
+  }
   const [planRef, planInView] = useInView<HTMLDivElement>({ threshold: 0.2 })
 
   return (
@@ -159,10 +171,7 @@ export const LandingPage = () => {
                     </div>
                     <div className="mt-1 text-center">
                       <p className="relative inline-block text-sm text-slate-600 dark:text-slate-300">
-                        <span className="pointer-events-none absolute right-[90%] top-0 -translate-y-[120%] -rotate-6 whitespace-nowrap text-xs font-medium text-slate-400/90 dark:text-slate-500/90">
-                          Sin tarjeta de crédito
-                        </span>
-                        Primer mes gratis, sin compromiso de permanencia
+                        Primer mes <span className="scribble-underline">gratis<HandDrawnUnderline /></span> (tarjeta no requerida)
                       </p>
                     </div>
                   </div>
@@ -200,9 +209,9 @@ export const LandingPage = () => {
           </div>
 
           <div className="testimonials-marquee" aria-label="Testimonios en carrusel">
-            <div className="testimonials-track">
+            <div ref={trackRef} className="testimonials-track">
               {testimonialsMarquee.map((testimonial, index) => (
-                <Card key={`${testimonial.name}-${index}`} className="testimonials-item border-slate-200/80 bg-card/95">
+                <Card key={`${testimonial.name}-${index}`} className="testimonials-item border-slate-200/80 bg-card/95 shadow-lg" onPointerEnter={handleCardPointerEnter} onPointerLeave={handleCardPointerLeave}>
                   <CardContent className="p-5">
                     <div className="flex items-start gap-3">
                       <img

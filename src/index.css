@@ -165,6 +165,8 @@ body {
   position: relative;
   overflow: hidden;
   width: 100%;
+  /* leave room for card box-shadows so they're not clipped */
+  padding-bottom: 1.25rem;
   -webkit-mask-image: linear-gradient(to right, transparent 0%, black 10%, black 90%, transparent 100%);
   mask-image: linear-gradient(to right, transparent 0%, black 10%, black 90%, transparent 100%);
 }
@@ -179,13 +181,21 @@ body {
   animation: testimonials-scroll 30s linear infinite;
 }
 
-.testimonials-marquee:hover .testimonials-track {
+/* Pause only when a testimonial card itself is hovered (uses :has where supported) */
+.testimonials-marquee:has(.testimonials-item:hover) .testimonials-track {
+  animation-play-state: paused;
+}
+
+/* JS-controlled pause class (fallback / robust behavior) */
+.testimonials-track.is-paused {
   animation-play-state: paused;
 }
 
 .testimonials-item {
   width: 17rem;
   flex-shrink: 0;
+  /* ensure vertical space so the bottom shadow is visible */
+  margin-bottom: 0.75rem;
 }
 
 @keyframes testimonials-scroll {
@@ -240,4 +250,29 @@ body {
   .plan-neon-card {
     animation: none;
   }
+}
+
+/* Curved, tapered underline for the word "gratis" using --primary color (inline SVG) */
+.scribble-underline {
+  position: relative;
+  display: inline-block;
+  line-height: 1;
+  z-index: 1;
+  /* keep text above the curve */
+}
+
+.scribble-underline svg.scribble {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -0.50em;
+  /* vertical offset under the text */
+  width: 100%;
+  height: 0.5em;
+  /* visual height of the arc */
+  pointer-events: none;
+  z-index: 0;
+  color: hsl(var(--primary));
+  /* ensures stroke uses --primary via currentColor */
+  overflow: visible;
 }

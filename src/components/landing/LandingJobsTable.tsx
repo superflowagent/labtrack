@@ -72,7 +72,7 @@ export const LandingJobsTable: React.FC = () => {
                 return
             }
 
-            const animationRange = Math.max(520, Math.min(1200, rect.height * 1.25))
+            const animationRange = Math.max(220, Math.min(520, rect.height * 0.6))
             const rawProgress = (currentScrollY - animationStartScrollY) / animationRange
             const progress = clamp(rawProgress, 0, 1)
             const easedProgress = Math.pow(progress, 1.8)
