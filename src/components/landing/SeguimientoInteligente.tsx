@@ -63,11 +63,11 @@ export const SeguimientoInteligente: React.FC = () => {
                         </div>
 
                         <div role="region" aria-label="Seguimiento inteligente" className="relative mt-10 md:mt-12 py-6">
-                            <div className="relative h-20">
+                            <div className="relative h-12 sm:h-20">
                                 {/* progress bar starts after first icon and ends before last */}
-                                <div className="absolute left-10 right-10 top-1/2 -translate-y-1/2 h-4 bg-slate-100/60 dark:bg-slate-800/60 rounded-full overflow-hidden z-0">
+                                <div className="absolute left-10 right-10 top-1/2 -translate-y-1/2 h-2 sm:h-4 bg-slate-100/60 dark:bg-slate-800/60 rounded-full overflow-hidden z-0">
                                     <div
-                                        className="h-4 bg-primary/80 transition-[width] duration-300 ease-out"
+                                        className="h-2 sm:h-4 bg-primary/80 transition-[width] duration-300 ease-out"
                                         style={{ width: `${progress}%` }}
                                         role="progressbar"
                                         aria-valuemin={0}
@@ -83,11 +83,11 @@ export const SeguimientoInteligente: React.FC = () => {
                                         const active = progress >= pos
                                         const Icon = icons[i]
                                         return (
-                                            <div key={label} className="w-20 flex justify-center">
+                                            <div key={label} className="w-12 sm:w-20 flex justify-center">
                                                 <div
-                                                    className={`relative flex items-center justify-center h-20 w-20 rounded-full border-2 transition-transform duration-300 hover:scale-125 ${active ? 'bg-white border-primary text-primary scale-110 shadow-md' : 'bg-background border-slate-200 text-slate-400'}`}
+                                                    className={`relative flex items-center justify-center h-12 w-12 sm:h-20 sm:w-20 rounded-full border-2 transition-transform duration-300 hover:scale-125 ${active ? 'bg-white border-primary text-primary scale-110 shadow-md' : 'bg-background border-slate-200 text-slate-400'}`}
                                                 >
-                                                    <Icon className="h-9 w-9" strokeWidth={1.5} aria-hidden />
+                                                    <Icon className="h-5 w-5 sm:h-9 sm:w-9" strokeWidth={1.5} aria-hidden />
                                                 </div>
                                             </div>
                                         )
