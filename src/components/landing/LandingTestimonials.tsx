@@ -1,9 +1,11 @@
 import React from 'react'
 
 const testimonials = [
-    { name: 'Dra. Laura Méndez', role: 'Clínica Central', quote: 'Desde que usamos Labtrack hemos reducido errores en la entrega y ahorrado 2 días de gestión al mes.' },
-    { name: 'Dr. Javier Ruiz', role: 'Centro Dental Ruiz', quote: 'La visibilidad en tiempo real con el dashboard facilita citas y evita reenvíos al laboratorio.' },
-    { name: 'Ana Torres', role: 'Clínica Sonrisa', quote: 'Organización, rapidez y comunicación con nuestros laboratorios. Imprescindible.' },
+    { name: 'Paula Moreno', role: 'Gestora de clínica', quote: 'Muy simple de usar. En un par de días el equipo completo ya estaba usando Labtrack para controlar los trabajos de la clínica.' },
+    { name: 'Dr. Carlos Herrera', role: 'Coordinador clínico', quote: 'Teníamos dudas de si nos iba a servir pero el primer mes gratis fue perfecto para validar el proceso. Nos quedamos porque es justo lo que necesitábamos.' },
+    { name: 'Dr. Javier Ruiz', role: 'Odontólogo · Clínica Sonrisa Viva', quote: 'En nuestra clínica era habitual cada cierto tiempo sufrir algún error con la trazabilidad de trabajos. Desde que usamos Labtrack, no ha habido ni un solo problema.' },
+    { name: 'Dra. Laura Gil', role: 'Especialista en prótesis', quote: 'Nos sería imposible controlar todos los trabajos de todos los laboratorios sin Labtrack. El equipo está encantado.' },
+    { name: 'Dra. Marta Sánchez', role: 'Directora clínica · Clínica Dental Norte', quote: 'Con Labtrack dejamos de perder tiempo en llamadas y ahora cada trabajo está claro para todo el equipo.' },
 ]
 
 export const LandingTestimonials: React.FC = () => {

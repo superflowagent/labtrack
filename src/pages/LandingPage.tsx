@@ -41,34 +41,34 @@ const planFeatures = [
 
 const testimonials = [
   {
-    name: 'Dra. Marta Sánchez',
-    role: 'Directora clínica · Clínica Dental Norte',
-    photo: '/professional1.jpg',
-    quote: 'Con Labtrack dejamos de perder tiempo en llamadas y ahora cada trabajo está claro para todo el equipo.',
-  },
-  {
-    name: 'Dr. Javier Ruiz',
-    role: 'Odontólogo · Clínica Sonrisa Viva',
-    photo: '/professional2.jpg',
-    quote: 'La trazabilidad de estados nos ayudó a reducir retrasos y dar fechas más fiables a los pacientes.',
-  },
-  {
     name: 'Paula Moreno',
     role: 'Gestora de clínica',
     photo: '/professional3.jpg',
-    quote: 'Muy simple de usar. En una semana todo el equipo ya estaba trabajando dentro del mismo flujo.',
-  },
-  {
-    name: 'Dra. Laura Gil',
-    role: 'Especialista en prótesis',
-    photo: '/professional4.jpg',
-    quote: 'El panel único nos dio visibilidad real de carga y prioridades. Se nota en productividad diaria.',
+    quote: 'Muy simple de usar. En un par de días el equipo completo ya estaba usando Labtrack para controlar los trabajos de la clínica.',
   },
   {
     name: 'Dr. Carlos Herrera',
     role: 'Coordinador clínico',
     photo: '/professional5.jpg',
-    quote: 'El primer mes gratis fue perfecto para validar el proceso. Nos quedamos porque funciona.',
+    quote: 'Teníamos dudas de si nos iba a servir pero el primer mes gratis fue perfecto para validar el proceso. Nos quedamos porque es justo lo que necesitábamos.',
+  },
+  {
+    name: 'Dr. Javier Ruiz',
+    role: 'Odontólogo · Clínica Sonrisa Viva',
+    photo: '/professional2.jpg',
+    quote: 'En nuestra clínica era habitual cada cierto tiempo sufrir algún error con la trazabilidad de trabajos. Desde que usamos Labtrack, no ha habido ni un solo problema.',
+  },
+  {
+    name: 'Dra. Laura Gil',
+    role: 'Especialista en prótesis',
+    photo: '/professional4.jpg',
+    quote: 'Nos sería imposible controlar todos los trabajos de todos los laboratorios sin Labtrack. El equipo está encantado.',
+  },
+  {
+    name: 'Dra. Marta Sánchez',
+    role: 'Directora clínica · Clínica Dental Norte',
+    photo: '/professional1.jpg',
+    quote: 'Con Labtrack dejamos de perder tiempo en llamadas y ahora cada trabajo está claro para todo el equipo.',
   },
 ]
 

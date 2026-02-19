@@ -1,15 +1,18 @@
 import React from 'react'
 import { Mail, MapPin, Phone } from 'lucide-react'
+import { Link } from 'react-router-dom'
 
 export const LandingFooter: React.FC = () => {
     return (
-        <footer className="mt-16 border-t border-slate-200 bg-background py-8">
+        <footer id="footer" className="mt-16 border-t border-slate-200 bg-background py-8">
             <div className="mx-auto max-w-6xl px-6">
                 <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
-                    <div className="flex items-center gap-4">
+                    <div className="flex flex-wrap items-center gap-4">
                         <div className="text-sm text-slate-600">© {new Date().getFullYear()} Labtrack</div>
-                        <a className="text-sm text-slate-500 hover:text-slate-700" href="/terms">Términos</a>
-                        <a className="text-sm text-slate-500 hover:text-slate-700" href="/privacy">Privacidad</a>
+                        <Link className="text-sm text-slate-500 hover:text-slate-700" to="/aviso-legal">Aviso legal</Link>
+                        <Link className="text-sm text-slate-500 hover:text-slate-700" to="/politica-privacidad">Privacidad</Link>
+                        <Link className="text-sm text-slate-500 hover:text-slate-700" to="/condiciones-uso">Términos y condiciones</Link>
+                        <Link className="text-sm text-slate-500 hover:text-slate-700" to="/politica-cookies">Cookies</Link>
                     </div>
                     <div className="flex flex-col items-center gap-1 text-sm text-slate-600 sm:items-end sm:text-right">
                         <a href="mailto:info@labtrack.es" className="inline-flex items-center gap-2 text-slate-600 hover:text-slate-800">
