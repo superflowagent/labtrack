@@ -47,8 +47,10 @@ export const LandingJobsTable: React.FC = () => {
             return
         }
 
+
         const maxTilt = 18
         let frame = 0
+        let animationStartScrollY: number | null = null
 
         const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value))
 
@@ -58,9 +60,23 @@ export const LandingJobsTable: React.FC = () => {
 
             const rect = el.getBoundingClientRect()
             const viewportHeight = window.innerHeight || 0
-            const rawProgress = (viewportHeight - rect.top) / (viewportHeight * 0.7)
+            const currentScrollY = window.scrollY || window.pageYOffset || 0
+            const isFullyVisible = rect.top >= 0 && rect.bottom <= viewportHeight
+
+            if (animationStartScrollY === null && isFullyVisible) {
+                animationStartScrollY = currentScrollY
+            }
+
+            if (animationStartScrollY === null) {
+                el.style.transform = `perspective(1200px) rotateX(${maxTilt.toFixed(2)}deg)`
+                return
+            }
+
+            const animationRange = Math.max(520, Math.min(1200, rect.height * 1.25))
+            const rawProgress = (currentScrollY - animationStartScrollY) / animationRange
             const progress = clamp(rawProgress, 0, 1)
-            const tilt = maxTilt * (1 - progress)
+            const easedProgress = Math.pow(progress, 1.8)
+            const tilt = maxTilt * (1 - easedProgress)
 
             el.style.transform = `perspective(1200px) rotateX(${tilt.toFixed(2)}deg)`
         }

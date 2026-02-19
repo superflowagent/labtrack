@@ -134,7 +134,7 @@ export const LandingPage = () => {
         </div>
       </section>
 
-      <section className="px-6 pt-32">
+      <section className="px-6 pt-16">
         <div className="mx-auto max-w-6xl">
           <div className="text-center mb-12">
             <p className="text-sm uppercase tracking-[0.3em] text-teal-600 mb-3">Plan</p>
