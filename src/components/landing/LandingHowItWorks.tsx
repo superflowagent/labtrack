@@ -10,7 +10,7 @@ export const LandingHowItWorks: React.FC = () => {
     const [ref, inView] = useInView({ threshold: 0.2 })
 
     return (
-        <section ref={ref} className={`mt-16 grid gap-8 sm:grid-cols-3 ${inView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'} transition-all duration-700`}>
+        <section ref={ref} className={`mt-16 grid gap-8 sm:grid-cols-3 bg-transparent ${inView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'} transition-all duration-700`}>
             <div>
                 <h3 className="text-xl font-semibold">1. Crear orden</h3>
                 <p className="text-sm text-slate-600 mt-2">Rellena los datos en segundos y envía al laboratorio.</p>

@@ -6,6 +6,7 @@ import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
+import { Shield } from 'lucide-react'
 
 
 export default function ClinicSettings({ asCard = false }: { asCard?: boolean } = {}) {
@@ -130,7 +131,7 @@ export default function ClinicSettings({ asCard = false }: { asCard?: boolean } 
                         </div>
                     </Card>
                     {/* Subscription card */}
-                    <Card className="p-6">
+                    <Card className="p-6 relative">
                         <div className="mb-4">
                             <Label className="mb-2">Suscripción</Label>
                             <div className="flex flex-col gap-2">
@@ -215,6 +216,11 @@ export default function ClinicSettings({ asCard = false }: { asCard?: boolean } 
                                     {portalLoading ? 'Abriendo…' : 'Gestionar suscripción'}
                                 </Button>
                             </div>
+                        </div>
+                        {/* Badge de seguridad */}
+                        <div className="absolute bottom-4 right-4 flex items-center gap-1 px-2 py-1 text-blue-600">
+                            <Shield className="w-3.5 h-3.5" />
+                            <span className="text-xs font-medium">Pago seguro con Stripe</span>
                         </div>
                     </Card>
                 </div>

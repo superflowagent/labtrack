@@ -8,11 +8,11 @@ const testimonials = [
 
 export const LandingTestimonials: React.FC = () => {
     return (
-        <section className="mt-12">
+        <section className="mt-12 bg-transparent">
             <h2 className="text-2xl font-semibold">Lo que dicen las clínicas</h2>
             <div className="mt-6 grid gap-4 sm:grid-cols-3">
                 {testimonials.map((t) => (
-                    <div key={t.name} className="rounded-lg border bg-white/80 p-4">
+                    <div key={t.name} className="rounded-lg border bg-white/60 dark:bg-card/60 p-4 backdrop-blur-sm">
                         <div className="flex items-center gap-3">
                             <div className="h-10 w-10 flex items-center justify-center rounded-full bg-teal-50 text-teal-700 font-semibold">{t.name.split(' ').map(n => n[0]).slice(0, 2).join('')}</div>
                             <div>

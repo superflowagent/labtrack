@@ -46,7 +46,13 @@ async function fetchClinic(supabaseUrl: string, serviceRoleKey: string, clinicId
     return data?.[0] ?? null
 }
 
-export default async function handler(req: any, res: any) {
+export default async function handler(
+    req: { method: string; body: unknown; headers?: Record<string, string | string[]> },
+    res: {
+        status: (code: number) => { json: (data: unknown) => unknown }
+        json: (data: unknown) => unknown
+    }
+) {
     if (req.method !== 'POST') {
         return res.status(405).json({ error: 'Method Not Allowed' })
     }

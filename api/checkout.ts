@@ -26,7 +26,13 @@ function parseBody(body: unknown) {
     return body as Record<string, unknown>
 }
 
-export default async function handler(req: any, res: any) {
+export default async function handler(
+    req: { method: string; body: unknown; headers?: Record<string, string | string[]> },
+    res: {
+        status: (code: number) => { json: (data: unknown) => unknown }
+        json: (data: unknown) => unknown
+    }
+) {
     if (req.method !== 'POST') {
         return res.status(405).json({ error: 'Method Not Allowed' })
     }

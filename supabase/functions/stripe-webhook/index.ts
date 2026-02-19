@@ -2,7 +2,7 @@
 // Edge Function para recibir eventos de Stripe y actualizar Supabase
 // @ts-expect-error - stripe types
 import type StripeType from 'npm:stripe@12.6.0'
-// @ts-ignore - Supabase injected client
+// @ts-expect-error - Supabase injected client
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const serve = Deno.serve as unknown as (handler: (req: Request) => Promise<Response> | Response) => void;
@@ -64,7 +64,7 @@ serve(async (req: Request) => {
                 try {
                     console.warn("Signature verification failed, trying unsigned parse fallback...");
                     event = JSON.parse(payloadText) as StripeType.Event;
-                } catch (fallbackErr) {
+                } catch {
                     return new Response(JSON.stringify({ error: "Invalid signature or payload" }), { status: 400 });
                 }
             }

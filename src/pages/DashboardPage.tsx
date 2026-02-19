@@ -445,6 +445,18 @@ function DashboardPage() {
         case 'estado':
           cmp = compare(a.job.status, b.job.status)
           break
+        case 'fecha': {
+          const dateA = a.job.order_date ? parseISO(a.job.order_date).getTime() : 0
+          const dateB = b.job.order_date ? parseISO(b.job.order_date).getTime() : 0
+          cmp = dateA - dateB
+          break
+        }
+        case 'transcurrido': {
+          const elapsedA = a.job.order_date ? now.getTime() - parseISO(a.job.order_date).getTime() : -1
+          const elapsedB = b.job.order_date ? now.getTime() - parseISO(b.job.order_date).getTime() : -1
+          cmp = elapsedA - elapsedB
+          break
+        }
         default:
           cmp = 0
       }
@@ -885,13 +897,90 @@ function DashboardPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Paciente</TableHead>
-                <TableHead>Trabajo</TableHead>
-                <TableHead>Laboratorio</TableHead>
-                <TableHead>Especialista</TableHead>
-                <TableHead className="w-60 max-w-[16rem]">Estado</TableHead>
-                <TableHead className="pl-8">Fecha</TableHead>
-                <TableHead>Transcurrido</TableHead>
+                <TableHead
+                  className="cursor-pointer"
+                  onClick={() => {
+                    if (filters.sortBy === 'paciente') {
+                      setFilters((prev) => ({ ...prev, sortDir: prev.sortDir === 'asc' ? 'desc' : 'asc' }))
+                    } else {
+                      setFilters((prev) => ({ ...prev, sortBy: 'paciente', sortDir: 'asc' }))
+                    }
+                  }}
+                >
+                  Paciente {filters.sortBy === 'paciente' ? (filters.sortDir === 'asc' ? '▲' : '▼') : ''}
+                </TableHead>
+                <TableHead
+                  className="cursor-pointer"
+                  onClick={() => {
+                    if (filters.sortBy === 'trabajo') {
+                      setFilters((prev) => ({ ...prev, sortDir: prev.sortDir === 'asc' ? 'desc' : 'asc' }))
+                    } else {
+                      setFilters((prev) => ({ ...prev, sortBy: 'trabajo', sortDir: 'asc' }))
+                    }
+                  }}
+                >
+                  Trabajo {filters.sortBy === 'trabajo' ? (filters.sortDir === 'asc' ? '▲' : '▼') : ''}
+                </TableHead>
+                <TableHead
+                  className="cursor-pointer"
+                  onClick={() => {
+                    if (filters.sortBy === 'laboratorio') {
+                      setFilters((prev) => ({ ...prev, sortDir: prev.sortDir === 'asc' ? 'desc' : 'asc' }))
+                    } else {
+                      setFilters((prev) => ({ ...prev, sortBy: 'laboratorio', sortDir: 'asc' }))
+                    }
+                  }}
+                >
+                  Laboratorio {filters.sortBy === 'laboratorio' ? (filters.sortDir === 'asc' ? '▲' : '▼') : ''}
+                </TableHead>
+                <TableHead
+                  className="cursor-pointer"
+                  onClick={() => {
+                    if (filters.sortBy === 'especialista') {
+                      setFilters((prev) => ({ ...prev, sortDir: prev.sortDir === 'asc' ? 'desc' : 'asc' }))
+                    } else {
+                      setFilters((prev) => ({ ...prev, sortBy: 'especialista', sortDir: 'asc' }))
+                    }
+                  }}
+                >
+                  Especialista {filters.sortBy === 'especialista' ? (filters.sortDir === 'asc' ? '▲' : '▼') : ''}
+                </TableHead>
+                <TableHead
+                  className="w-60 max-w-[16rem] cursor-pointer"
+                  onClick={() => {
+                    if (filters.sortBy === 'estado') {
+                      setFilters((prev) => ({ ...prev, sortDir: prev.sortDir === 'asc' ? 'desc' : 'asc' }))
+                    } else {
+                      setFilters((prev) => ({ ...prev, sortBy: 'estado', sortDir: 'asc' }))
+                    }
+                  }}
+                >
+                  Estado {filters.sortBy === 'estado' ? (filters.sortDir === 'asc' ? '▲' : '▼') : ''}
+                </TableHead>
+                <TableHead
+                  className="pl-8 cursor-pointer"
+                  onClick={() => {
+                    if (filters.sortBy === 'fecha') {
+                      setFilters((prev) => ({ ...prev, sortDir: prev.sortDir === 'asc' ? 'desc' : 'asc' }))
+                    } else {
+                      setFilters((prev) => ({ ...prev, sortBy: 'fecha', sortDir: 'asc' }))
+                    }
+                  }}
+                >
+                  Fecha {filters.sortBy === 'fecha' ? (filters.sortDir === 'asc' ? '▲' : '▼') : ''}
+                </TableHead>
+                <TableHead
+                  className="cursor-pointer"
+                  onClick={() => {
+                    if (filters.sortBy === 'transcurrido') {
+                      setFilters((prev) => ({ ...prev, sortDir: prev.sortDir === 'asc' ? 'desc' : 'asc' }))
+                    } else {
+                      setFilters((prev) => ({ ...prev, sortBy: 'transcurrido', sortDir: 'asc' }))
+                    }
+                  }}
+                >
+                  Transcurrido {filters.sortBy === 'transcurrido' ? (filters.sortDir === 'asc' ? '▲' : '▼') : ''}
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

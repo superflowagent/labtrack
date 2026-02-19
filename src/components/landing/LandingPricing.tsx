@@ -5,7 +5,7 @@ import { Link } from 'react-router-dom'
 
 export const LandingPricing: React.FC = () => {
     return (
-        <section className="mt-16">
+        <section className="mt-16 bg-transparent">
             <h2 className="text-2xl font-semibold">Precio simple</h2>
             <p className="mt-2 text-slate-600">1 plan — 1 mes gratis, luego 19,99€/mes. Facturación mensual.</p>
             <Card className="mt-6 p-6 flex items-center justify-between">
