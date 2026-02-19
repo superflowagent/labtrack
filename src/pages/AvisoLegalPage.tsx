@@ -5,8 +5,7 @@ const AvisoLegalPage = () => {
         <LegalPageLayout title="Aviso Legal">
             <section className="space-y-3">
                 <h2 className="text-xl font-semibold text-slate-900">Titular de la web</h2>
-                <p><span className="font-medium">Responsable:</span> Víctor Romero</p>
-                <p><span className="font-medium">NIF:</span> 48690963D</p>
+                <p><span className="font-medium">Responsable:</span> Superflow SL</p>
                 <p><span className="font-medium">Domicilio:</span> Valencia, España.</p>
                 <p><span className="font-medium">Email de contacto:</span> info@labtrack.es</p>
             </section>
