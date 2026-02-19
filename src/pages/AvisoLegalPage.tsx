@@ -21,7 +21,7 @@ const AvisoLegalPage = () => {
             <section className="space-y-3">
                 <h2 className="text-xl font-semibold text-slate-900">Propiedad intelectual</h2>
                 <p>
-                    Víctor Romero es titular de todos los derechos de propiedad intelectual e industrial de Labtrack (código fuente,
+                    Superflow SL es titular de todos los derechos de propiedad intelectual e industrial de Labtrack (código fuente,
                     diseño, logotipos, etc.). Queda prohibida la reproducción o distribución total o parcial de los mismos sin
                     autorización expresa.
                 </p>
