@@ -1393,7 +1393,7 @@ function DashboardPage() {
                 <Input
                   value={form.job_description}
                   onChange={(e) => setForm((prev) => ({ ...prev, job_description: e.target.value }))}
-                  placeholder="Orden de trabajo"
+                  placeholder="Descripción del trabajo"
                 />
               </div>
 
