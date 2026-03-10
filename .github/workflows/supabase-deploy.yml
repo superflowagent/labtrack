@@ -59,6 +59,39 @@ jobs:
           echo "Checking current migration status..."
           supabase migration list
 
+      - name: Bootstrap baseline migration history for existing schema
+        run: |
+          set -euo pipefail
+
+          shopt -s nullglob
+          migration_paths=(supabase/migrations/*.sql)
+          if [ "${#migration_paths[@]}" -ne 1 ]; then
+            echo "Skipping baseline repair check: expected exactly one migration file, found ${#migration_paths[@]}."
+            exit 0
+          fi
+
+          baseline_file="$(basename "${migration_paths[0]}")"
+          if [[ "$baseline_file" != *_baseline.sql ]]; then
+            echo "Skipping baseline repair check: only migration is not a baseline file."
+            exit 0
+          fi
+
+          baseline_version="${baseline_file%%_*}"
+          remote_schema_dump="$(mktemp)"
+          trap 'rm -f "$remote_schema_dump"' EXIT
+
+          echo "Inspecting remote public schema before applying baseline..."
+          supabase db dump --linked --schema public --file "$remote_schema_dump"
+
+          if grep -q 'CREATE TABLE IF NOT EXISTS "public"\."clinics"' "$remote_schema_dump" \
+            && grep -q 'CREATE TABLE IF NOT EXISTS "public"\."jobs"' "$remote_schema_dump" \
+            && grep -q 'CREATE TABLE IF NOT EXISTS "public"\."patients"' "$remote_schema_dump"; then
+            echo "Remote schema already contains baseline tables. Marking migration $baseline_version as applied."
+            supabase migration repair "$baseline_version" --status applied --yes
+          else
+            echo "Remote schema does not contain the baseline markers. Leaving migration history unchanged."
+          fi
+
       - name: Apply database migrations
         run: |
           echo "Applying migrations to remote database..."
