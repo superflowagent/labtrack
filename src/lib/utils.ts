@@ -29,3 +29,7 @@ export function normalizeSearch(s?: string | null) {
     .replace(/\s+/g, ' ')
     .toLowerCase()
 }
+
+export function formatFullName(name?: string | null, lastname?: string | null) {
+  return [name, lastname].filter((part) => !!part?.trim()).join(' ').trim()
+}

@@ -51,7 +51,7 @@ const server = http.createServer((req, res) => {
     });
 });
 
-const PROXY_PORT = 54325;
+const PROXY_PORT = 54335;
 server.listen(PROXY_PORT, () => {
     console.log(`Stripe proxy listening on port ${PROXY_PORT} -> forwards to`, TARGET);
 });

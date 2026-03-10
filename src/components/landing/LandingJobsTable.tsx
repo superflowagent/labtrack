@@ -6,9 +6,9 @@ const getStatusIcon = (status: string) => {
     switch (status) {
         case 'En laboratorio':
             return <FlaskConical className="h-4 w-4" />
-        case 'En clinica (sin citar)':
+        case 'En clínica (sin citar)':
             return <User className="h-4 w-4" />
-        case 'En clinica (citado)':
+        case 'En clínica (citado)':
             return <Clock className="h-4 w-4" />
         case 'Cerrado':
             return <CheckCircle2 className="h-4 w-4" />
@@ -21,9 +21,9 @@ const getStatusBgClass = (status: string) => {
     switch (status) {
         case 'En laboratorio':
             return 'bg-yellow-50 text-yellow-700'
-        case 'En clinica (sin citar)':
+        case 'En clínica (sin citar)':
             return 'bg-orange-100 text-orange-800'
-        case 'En clinica (citado)':
+        case 'En clínica (citado)':
             return 'bg-purple-50 text-purple-700'
         case 'Cerrado':
             return 'bg-blue-50 text-blue-700'

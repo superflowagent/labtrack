@@ -813,7 +813,6 @@ function DashboardPage() {
   }
 
   const [open, setOpen] = useState(false)
-  const [editingJobId, setEditingJobId] = useState<string | null>(null)
   const [editingJob, setEditingJob] = useState<Job | null>(null)
   const jobDialogRef = useRef<JobDialogHandle>(null)
   // patient select local state
@@ -1132,7 +1131,6 @@ function DashboardPage() {
   const handleJobSaved = (job: Job, isNew: boolean) => {
     if (!isNew) upsertLocalJob(job)
     setOpen(false)
-    setEditingJobId(null)
     setEditingJob(null)
   }
 
