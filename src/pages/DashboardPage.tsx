@@ -1336,13 +1336,13 @@ function DashboardPage() {
         <div className="p-0 flex-1 min-h-0 overflow-auto">
           <Table>
             <colgroup>
-              <col style={{ width: '25%' }} />
-              <col style={{ width: '20%' }} />
-              <col style={{ width: '17%' }} />
-              <col style={{ width: '13%' }} />
+              <col style={{ width: '25.46%' }} />
+              <col style={{ width: '19.09%' }} />
+              <col style={{ width: '15.45%' }} />
+              <col style={{ width: '11%' }} />
+              <col style={{ width: '9%' }} />
               <col style={{ width: '10%' }} />
-              <col style={{ width: '12.5%' }} />
-              <col style={{ width: '12.5%' }} />
+              <col style={{ width: '10%' }} />
             </colgroup>
             <TableHeader>
               <TableRow>
