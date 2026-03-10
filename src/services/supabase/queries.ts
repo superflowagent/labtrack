@@ -1,5 +1,6 @@
 import { supabase } from './client'
 import { getClinicForUser } from './clinic'
+import { subscriptionEnforcementEnabled } from '@/lib/billing'
 import type { Job, Laboratory, NewJob, Patient, Specialist, Clinic } from '@/types/domain'
 
 export const getClinicIdForUser = async () => {
@@ -19,6 +20,7 @@ export const getClinicIdForUser = async () => {
 
 const ensureActiveClinic = async () => {
   const clinic = await getClinicForUser()
+  if (!subscriptionEnforcementEnabled) return clinic as Clinic
   const now = new Date()
   const trialEnd = clinic?.trial_ends_at ? new Date(clinic.trial_ends_at) : null
   const trialStillActive = !!trialEnd && trialEnd > now

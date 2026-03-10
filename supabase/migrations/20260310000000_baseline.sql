@@ -418,7 +418,6 @@ END;
 $$;
 
 
-/* consolidated: check_subscription_status removed (migration merged) */
 
 
 CREATE OR REPLACE FUNCTION "public"."create_auth_user_for_profile"() RETURNS "trigger"
@@ -1590,8 +1589,6 @@ END $$;
 
 ALTER PUBLICATION "supabase_realtime" OWNER TO "postgres";
 
-/* consolidated: reset_production_db.sql — defensive cleanup from earlier migration */
--- Drop objects that may exist from an incorrect/old project (idempotent)
 
 
 
@@ -1832,7 +1829,6 @@ GRANT ALL ON FUNCTION "public"."as_uuid_array"("_val" "anyelement") TO "service_
 
 
 
-/* consolidated: removed grants for check_subscription_status */
 
 
 

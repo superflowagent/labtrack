@@ -73,6 +73,9 @@ const testimonials = [
 ]
 
 const testimonialsMarquee = [...testimonials, ...testimonials]
+const showPlanPromo = false
+const planPromoText = 'Primer mes gratis (tarjeta no requerida)'
+const showProfessionalsSection = false
 
 export const LandingPage = () => {
   const trackRef = useRef<HTMLDivElement | null>(null)
@@ -166,14 +169,22 @@ export const LandingPage = () => {
                   <div>
                     <p className="text-xl font-semibold text-teal-600">Plan Premium</p>
                     <div className="mt-2 flex flex-wrap items-end justify-center gap-3">
-                      <h3 className="text-2xl font-semibold">19,99€/mes</h3>
-                      <p className="text-base text-slate-500 line-through">29,99€</p>
+                      <h3 className="text-2xl font-semibold">50 €/mes</h3>
+                      <p className="text-base text-slate-500 line-through">75 €</p>
                     </div>
-                    <div className="mt-1 text-center">
-                      <p className="relative inline-block text-sm text-slate-600 dark:text-slate-300">
-                        Primer mes <span className="scribble-underline">gratis<HandDrawnUnderline /></span> (tarjeta no requerida)
-                      </p>
-                    </div>
+                    {showPlanPromo && (
+                      <div className="mt-1 text-center">
+                        <p className="relative inline-block text-sm text-slate-600 dark:text-slate-300">
+                          {planPromoText.includes('gratis') ? (
+                            <>
+                              Primer mes <span className="scribble-underline">gratis<HandDrawnUnderline /></span> (tarjeta no requerida)
+                            </>
+                          ) : (
+                            planPromoText
+                          )}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -201,37 +212,39 @@ export const LandingPage = () => {
         </div>
       </section>
 
-      <section className="px-6 pt-32 pb-24">
-        <div className="mx-auto max-w-6xl">
-          <div className="text-center mb-12">
-            <p className="text-sm uppercase tracking-[0.3em] text-teal-600 mb-3">Profesionales</p>
-            <h2 className="text-3xl sm:text-4xl font-semibold mb-4">Lo que dicen nuestros usuarios</h2>
-          </div>
+      {showProfessionalsSection && (
+        <section className="px-6 pt-32 pb-24">
+          <div className="mx-auto max-w-6xl">
+            <div className="text-center mb-12">
+              <p className="text-sm uppercase tracking-[0.3em] text-teal-600 mb-3">Profesionales</p>
+              <h2 className="text-3xl sm:text-4xl font-semibold mb-4">Lo que dicen nuestros usuarios</h2>
+            </div>
 
-          <div className="testimonials-marquee" aria-label="Testimonios en carrusel">
-            <div ref={trackRef} className="testimonials-track">
-              {testimonialsMarquee.map((testimonial, index) => (
-                <Card key={`${testimonial.name}-${index}`} className="testimonials-item border-slate-200/80 bg-card/95 shadow-lg" onPointerEnter={handleCardPointerEnter} onPointerLeave={handleCardPointerLeave}>
-                  <CardContent className="p-5">
-                    <div className="flex items-start gap-3">
-                      <img
-                        src={testimonial.photo}
-                        alt={testimonial.name}
-                        className="h-14 w-14 rounded-full object-cover ring-2 ring-teal-200"
-                      />
-                      <div className="text-left">
-                        <p className="text-sm font-semibold leading-tight">{testimonial.name}</p>
-                        <p className="text-xs text-slate-500 mt-0.5">{testimonial.role}</p>
+            <div className="testimonials-marquee" aria-label="Testimonios en carrusel">
+              <div ref={trackRef} className="testimonials-track">
+                {testimonialsMarquee.map((testimonial, index) => (
+                  <Card key={`${testimonial.name}-${index}`} className="testimonials-item border-slate-200/80 bg-card/95 shadow-lg" onPointerEnter={handleCardPointerEnter} onPointerLeave={handleCardPointerLeave}>
+                    <CardContent className="p-5">
+                      <div className="flex items-start gap-3">
+                        <img
+                          src={testimonial.photo}
+                          alt={testimonial.name}
+                          className="h-14 w-14 rounded-full object-cover ring-2 ring-teal-200"
+                        />
+                        <div className="text-left">
+                          <p className="text-sm font-semibold leading-tight">{testimonial.name}</p>
+                          <p className="text-xs text-slate-500 mt-0.5">{testimonial.role}</p>
+                        </div>
                       </div>
-                    </div>
-                    <p className="mt-4 text-sm text-slate-700 dark:text-slate-200 leading-relaxed">“{testimonial.quote}”</p>
-                  </CardContent>
-                </Card>
-              ))}
+                      <p className="mt-4 text-sm text-slate-700 dark:text-slate-200 leading-relaxed">“{testimonial.quote}”</p>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       <LandingFooter />
     </div>

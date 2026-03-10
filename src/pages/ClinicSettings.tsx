@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Shield } from 'lucide-react'
+import { subscriptionEnforcementEnabled } from '@/lib/billing'
 
 
 export default function ClinicSettings({ asCard = false }: { asCard?: boolean } = {}) {
@@ -130,99 +131,95 @@ export default function ClinicSettings({ asCard = false }: { asCard?: boolean } 
                             </div>
                         </div>
                     </Card>
-                    {/* Subscription card */}
-                    <Card className="p-6 relative">
-                        <div className="mb-4">
-                            <Label className="mb-2">Suscripción</Label>
-                            <div className="flex flex-col gap-2">
-                                <span
-                                    className={
-                                        subscriptionStatus === 'premium'
-                                            ? 'self-start w-auto my-2 inline-flex items-center gap-1.5 rounded-full bg-green-50 px-3 py-1 text-xs font-medium text-green-700'
-                                            : subscriptionStatus === 'trial'
-                                                ? 'self-start w-auto my-2 inline-flex items-center gap-1.5 rounded-full bg-yellow-50 px-3 py-1 text-xs font-medium text-yellow-700'
-                                                : 'self-start w-auto my-2 inline-flex items-center gap-1.5 rounded-full bg-red-50 px-3 py-1 text-xs font-medium text-red-700'
-                                    }
-                                >
-                                    {subscriptionStatus === 'premium' && `⭐ Suscripción activa`}
-                                    {subscriptionStatus === 'trial' && `⏳ Prueba gratuita (${trialDaysLeft} días restantes)`}
-                                    {subscriptionStatus === 'none' && `🚫 Sin suscripción`}
-                                </span>
-                                <Button
-                                    variant="outline"
-                                    className="w-fit"
-                                    disabled={portalLoading}
-                                    onClick={async () => {
-                                        if (!clinic) return
+                    {subscriptionEnforcementEnabled && (
+                        <Card className="p-6 relative">
+                            <div className="mb-4">
+                                <Label className="mb-2">Suscripción</Label>
+                                <div className="flex flex-col gap-2">
+                                    <span
+                                        className={
+                                            subscriptionStatus === 'premium'
+                                                ? 'self-start w-auto my-2 inline-flex items-center gap-1.5 rounded-full bg-green-50 px-3 py-1 text-xs font-medium text-green-700'
+                                                : subscriptionStatus === 'trial'
+                                                    ? 'self-start w-auto my-2 inline-flex items-center gap-1.5 rounded-full bg-yellow-50 px-3 py-1 text-xs font-medium text-yellow-700'
+                                                    : 'self-start w-auto my-2 inline-flex items-center gap-1.5 rounded-full bg-red-50 px-3 py-1 text-xs font-medium text-red-700'
+                                        }
+                                    >
+                                        {subscriptionStatus === 'premium' && `⭐ Suscripción activa`}
+                                        {subscriptionStatus === 'trial' && `⏳ Prueba gratuita (${trialDaysLeft} días restantes)`}
+                                        {subscriptionStatus === 'none' && `🚫 Sin suscripción`}
+                                    </span>
+                                    <Button
+                                        variant="outline"
+                                        className="w-fit"
+                                        disabled={portalLoading}
+                                        onClick={async () => {
+                                            if (!clinic) return
 
-                                        setPortalLoading(true)
-                                        try {
-                                            // If not premium, create a checkout session
-                                            if (subscriptionStatus !== 'premium') {
-                                                const res = await fetch('/api/checkout', {
-                                                    method: 'POST',
-                                                    headers: { 'Content-Type': 'application/json' },
-                                                    body: JSON.stringify({
-                                                        clinicId: clinic.id,
-                                                        userEmail: userEmail || undefined,
-                                                    }),
-                                                })
+                                            setPortalLoading(true)
+                                            try {
+                                                if (subscriptionStatus !== 'premium') {
+                                                    const res = await fetch('/api/checkout', {
+                                                        method: 'POST',
+                                                        headers: { 'Content-Type': 'application/json' },
+                                                        body: JSON.stringify({
+                                                            clinicId: clinic.id,
+                                                            userEmail: userEmail || undefined,
+                                                        }),
+                                                    })
+
+                                                    if (!res.ok) {
+                                                        const errBody: unknown = await res.json().catch(() => null)
+                                                        const errMsg = typeof errBody === 'object' && errBody !== null && 'error' in (errBody as Record<string, unknown>)
+                                                            ? ((errBody as Record<string, unknown>)['error'] as string | undefined)
+                                                            : undefined
+                                                        throw new Error(errMsg || res.statusText || 'No se pudo crear la sesión de checkout')
+                                                    }
+
+                                                    const data = await res.json()
+                                                    if (data?.url) {
+                                                        window.location.href = data.url
+                                                    }
+                                                    return
+                                                }
+
+                                                const { data: { session } } = await supabase.auth.getSession()
+                                                const token = session?.access_token
+
+                                                const endpoint = '/api/portal'
+                                                const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+                                                if (token) headers['Authorization'] = `Bearer ${token}`
+
+                                                const res = await fetch(endpoint, { method: 'POST', headers, body: JSON.stringify({ clinicId: clinic.id }) })
 
                                                 if (!res.ok) {
-                                                    let errBody: unknown = null
-                                                    try { errBody = await res.json() } catch { /* ignore non-json */ }
+                                                    const errBody: unknown = await res.json().catch(() => null)
                                                     const errMsg = typeof errBody === 'object' && errBody !== null && 'error' in (errBody as Record<string, unknown>)
                                                         ? ((errBody as Record<string, unknown>)['error'] as string | undefined)
                                                         : undefined
-                                                    throw new Error(errMsg || res.statusText || 'No se pudo crear la sesión de checkout')
+                                                    throw new Error(errMsg || res.statusText || 'No se pudo abrir el portal')
                                                 }
 
                                                 const data = await res.json()
-                                                if (data?.url) {
-                                                    window.location.href = data.url
-                                                }
-                                                return
+                                                if (data?.url) window.location.href = data.url
+                                            } catch (err: unknown) {
+                                                const msg = err instanceof Error ? err.message : String(err)
+                                                setError(msg)
+                                            } finally {
+                                                setPortalLoading(false)
                                             }
-
-                                            // premium -> open Stripe Customer Portal (server-side)
-                                            const { data: { session } } = await supabase.auth.getSession()
-                                            const token = session?.access_token
-
-                                            const endpoint = '/api/portal' // dev proxy forwards to test-server
-                                            const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-                                            if (token) headers['Authorization'] = `Bearer ${token}`
-
-                                            const res = await fetch(endpoint, { method: 'POST', headers, body: JSON.stringify({ clinicId: clinic.id }) })
-
-                                            if (!res.ok) {
-                                                let errBody: unknown = null
-                                                try { errBody = await res.json() } catch { /* ignore non-json */ }
-                                                const errMsg = typeof errBody === 'object' && errBody !== null && 'error' in (errBody as Record<string, unknown>)
-                                                    ? ((errBody as Record<string, unknown>)['error'] as string | undefined)
-                                                    : undefined
-                                                throw new Error(errMsg || res.statusText || 'No se pudo abrir el portal')
-                                            }
-
-                                            const data = await res.json()
-                                            if (data?.url) window.location.href = data.url
-                                        } catch (err: unknown) {
-                                            const msg = err instanceof Error ? err.message : String(err)
-                                            setError(msg)
-                                        } finally {
-                                            setPortalLoading(false)
-                                        }
-                                    }}
-                                >
-                                    {portalLoading ? 'Abriendo…' : 'Gestionar suscripción'}
-                                </Button>
+                                        }}
+                                    >
+                                        {portalLoading ? 'Abriendo…' : 'Gestionar suscripción'}
+                                    </Button>
+                                </div>
                             </div>
-                        </div>
-                        {/* Badge de seguridad */}
-                        <div className="absolute bottom-4 right-4 flex items-center gap-1 px-2 py-1 text-blue-600">
-                            <Shield className="w-3.5 h-3.5" />
-                            <span className="text-xs font-medium">Pago seguro con Stripe</span>
-                        </div>
-                    </Card>
+                            <div className="absolute bottom-4 right-4 flex items-center gap-1 px-2 py-1 text-blue-600">
+                                <Shield className="w-3.5 h-3.5" />
+                                <span className="text-xs font-medium">Pago seguro con Stripe</span>
+                            </div>
+                        </Card>
+                    )}
                 </div>
             </Card>
         </div>
