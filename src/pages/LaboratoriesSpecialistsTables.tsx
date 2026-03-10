@@ -3,7 +3,26 @@ import { Card, CardFooter } from '@/components/ui/card';
 import { Pagination } from '@/components/ui/pagination';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import type { Laboratory, Patient, Specialist } from '@/types/domain';
-import { normalizeSearch } from '@/lib/utils';
+import { formatFullName, normalizeSearch } from '@/lib/utils';
+
+const getWhatsAppHref = (phone: string | null) => phone ? `https://wa.me/${phone}` : 'https://wa.me/';
+
+function WhatsAppLink({ phone }: { phone: string | null }) {
+    return (
+        <a
+            href={getWhatsAppHref(phone)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="ml-2 inline-flex items-center justify-center w-6 h-6 rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-700 shadow-sm transition-transform transform hover:scale-105"
+            title={phone ? 'Abrir WhatsApp' : 'Abrir WhatsApp'}
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => e.stopPropagation()}
+            tabIndex={0}
+        >
+            <img src="/whatsapp.svg" alt="WhatsApp" className="w-4 h-4 pointer-events-none" />
+        </a>
+    );
+}
 
 // Props: labs: Laboratory[]
 export function LaboratoriesTable({ labs, filter, onEdit, asCard = true }: { labs: Laboratory[]; filter?: string; onEdit?: (lab: Laboratory) => void; asCard?: boolean }) {
@@ -91,32 +110,7 @@ export function LaboratoriesTable({ labs, filter, onEdit, asCard = true }: { lab
                                             <TableCell className="font-medium pl-6">{lab.name || '-'}</TableCell>
                                             <TableCell className="flex items-center gap-2">
                                                 <span className="truncate">{lab.phone || '-'}</span>
-                                                {lab.phone ? (
-                                                    <a
-                                                        href={`https://wa.me/${lab.phone}`}
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
-                                                        className="ml-2 inline-flex items-center justify-center w-6 h-6 rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-700 shadow-sm transition-transform transform hover:scale-105"
-                                                        title="Abrir WhatsApp"
-                                                        onClick={(e) => e.stopPropagation()}
-                                                        onKeyDown={(e) => e.stopPropagation()}
-                                                        tabIndex={0}
-                                                    >
-                                                        <img src="/whatsapp.svg" alt="WhatsApp" className="w-4 h-4 pointer-events-none" />
-                                                    </a>
-                                                ) : (
-                                                    <button
-                                                        type="button"
-                                                        aria-disabled="true"
-                                                        tabIndex={-1}
-                                                        onClick={(e) => e.stopPropagation()}
-                                                        onKeyDown={(e) => e.stopPropagation()}
-                                                        className="ml-2 inline-flex items-center justify-center w-6 h-6 rounded-md bg-transparent border border-slate-100 text-slate-300 cursor-not-allowed opacity-60 filter grayscale"
-                                                        title="Sin teléfono"
-                                                    >
-                                                        <img src="/whatsapp.svg" alt="WhatsApp" className="w-4 h-4 opacity-60 filter grayscale pointer-events-none" />
-                                                    </button>
-                                                )}
+                                                <WhatsAppLink phone={lab.phone} />
                                             </TableCell>
                                             <TableCell>{lab.email || '-'}</TableCell>
                                         </TableRow>
@@ -164,32 +158,7 @@ export function LaboratoriesTable({ labs, filter, onEdit, asCard = true }: { lab
                                             <TableCell className="font-medium pl-6">{lab.name || '-'}</TableCell>
                                             <TableCell className="flex items-center gap-2">
                                                 <span className="truncate">{lab.phone || '-'}</span>
-                                                {lab.phone ? (
-                                                    <a
-                                                        href={`https://wa.me/${lab.phone}`}
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
-                                                        className="ml-2 inline-flex items-center justify-center w-6 h-6 rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-700 shadow-sm transition-transform transform hover:scale-105"
-                                                        title="Abrir WhatsApp"
-                                                        onClick={(e) => e.stopPropagation()}
-                                                        onKeyDown={(e) => e.stopPropagation()}
-                                                        tabIndex={0}
-                                                    >
-                                                        <img src="/whatsapp.svg" alt="WhatsApp" className="w-4 h-4 pointer-events-none" />
-                                                    </a>
-                                                ) : (
-                                                    <button
-                                                        type="button"
-                                                        aria-disabled="true"
-                                                        tabIndex={-1}
-                                                        onClick={(e) => e.stopPropagation()}
-                                                        onKeyDown={(e) => e.stopPropagation()}
-                                                        className="ml-2 inline-flex items-center justify-center w-6 h-6 rounded-md bg-transparent border border-slate-100 text-slate-300 cursor-not-allowed opacity-60 filter grayscale"
-                                                        title="Sin teléfono"
-                                                    >
-                                                        <img src="/whatsapp.svg" alt="WhatsApp" className="w-4 h-4 opacity-60 filter grayscale pointer-events-none" />
-                                                    </button>
-                                                )}
+                                                <WhatsAppLink phone={lab.phone} />
                                             </TableCell>
                                             <TableCell>{lab.email || '-'}</TableCell>
                                         </TableRow>
@@ -296,32 +265,7 @@ export function SpecialistsTable({ specialists, filter, onEdit, asCard = true }:
                                             <TableCell>{spec.specialty || '-'}</TableCell>
                                             <TableCell className="flex items-center gap-2">
                                                 <span className="truncate">{spec.phone || '-'}</span>
-                                                {spec.phone ? (
-                                                    <a
-                                                        href={`https://wa.me/${spec.phone}`}
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
-                                                        className="ml-2 inline-flex items-center justify-center w-6 h-6 rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-700 shadow-sm transition-transform transform hover:scale-105"
-                                                        title="Abrir WhatsApp"
-                                                        onClick={(e) => e.stopPropagation()}
-                                                        onKeyDown={(e) => e.stopPropagation()}
-                                                        tabIndex={0}
-                                                    >
-                                                        <img src="/whatsapp.svg" alt="WhatsApp" className="w-4 h-4 pointer-events-none" />
-                                                    </a>
-                                                ) : (
-                                                    <button
-                                                        type="button"
-                                                        aria-disabled="true"
-                                                        tabIndex={-1}
-                                                        onClick={(e) => e.stopPropagation()}
-                                                        onKeyDown={(e) => e.stopPropagation()}
-                                                        className="ml-2 inline-flex items-center justify-center w-6 h-6 rounded-md bg-transparent border border-slate-100 text-slate-300 cursor-not-allowed opacity-60 filter grayscale"
-                                                        title="Sin teléfono"
-                                                    >
-                                                        <img src="/whatsapp.svg" alt="WhatsApp" className="w-4 h-4 opacity-60 filter grayscale pointer-events-none" />
-                                                    </button>
-                                                )}
+                                                <WhatsAppLink phone={spec.phone} />
                                             </TableCell>
                                             <TableCell>{spec.email || '-'}</TableCell>
                                         </TableRow>
@@ -370,32 +314,7 @@ export function SpecialistsTable({ specialists, filter, onEdit, asCard = true }:
                                             <TableCell>{spec.specialty || '-'}</TableCell>
                                             <TableCell className="flex items-center gap-2">
                                                 <span className="truncate">{spec.phone || '-'}</span>
-                                                {spec.phone ? (
-                                                    <a
-                                                        href={`https://wa.me/${spec.phone}`}
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
-                                                        className="ml-2 inline-flex items-center justify-center w-6 h-6 rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-700 shadow-sm transition-transform transform hover:scale-105"
-                                                        title="Abrir WhatsApp"
-                                                        onClick={(e) => e.stopPropagation()}
-                                                        onKeyDown={(e) => e.stopPropagation()}
-                                                        tabIndex={0}
-                                                    >
-                                                        <img src="/whatsapp.svg" alt="WhatsApp" className="w-4 h-4 pointer-events-none" />
-                                                    </a>
-                                                ) : (
-                                                    <button
-                                                        type="button"
-                                                        aria-disabled="true"
-                                                        tabIndex={-1}
-                                                        onClick={(e) => e.stopPropagation()}
-                                                        onKeyDown={(e) => e.stopPropagation()}
-                                                        className="ml-2 inline-flex items-center justify-center w-6 h-6 rounded-md bg-transparent border border-slate-100 text-slate-300 cursor-not-allowed opacity-60 filter grayscale"
-                                                        title="Sin teléfono"
-                                                    >
-                                                        <img src="/whatsapp.svg" alt="WhatsApp" className="w-4 h-4 opacity-60 filter grayscale pointer-events-none" />
-                                                    </button>
-                                                )}
+                                                <WhatsAppLink phone={spec.phone} />
                                             </TableCell>
                                             <TableCell>{spec.email || '-'}</TableCell>
                                         </TableRow>
@@ -422,17 +341,19 @@ export function PatientsTable({ patients, filter, onEdit, asCard = true }: { pat
     const sortedPatients = useMemo(() => {
         const q = appliedFilter;
         let filtered = patients.filter(patient => {
+            const patientFullName = formatFullName(patient.name, patient.lastname);
             if (!q) return true;
             return (
-                normalizeSearch(patient.name).includes(q) ||
+                normalizeSearch(patientFullName).includes(q) ||
+                normalizeSearch(patient.dni).includes(q) ||
                 normalizeSearch(patient.phone).includes(q) ||
                 normalizeSearch(patient.email).includes(q) ||
                 normalizeSearch(patient.code).includes(q)
             );
         });
         filtered = filtered.sort((a, b) => {
-            const aVal = a[sortBy] || '';
-            const bVal = b[sortBy] || '';
+            const aVal = sortBy === 'name' ? formatFullName(a.name, a.lastname) : a[sortBy] || '';
+            const bVal = sortBy === 'name' ? formatFullName(b.name, b.lastname) : b[sortBy] || '';
             if (aVal < bVal) return sortDir === 'asc' ? -1 : 1;
             if (aVal > bVal) return sortDir === 'asc' ? 1 : -1;
             return 0;
@@ -499,7 +420,7 @@ export function PatientsTable({ patients, filter, onEdit, asCard = true }: { pat
                                     paginatedPatients.map(patient => (
                                         <TableRow key={patient.id} onClick={() => onEdit?.(patient)} className={onEdit ? 'cursor-pointer hover:bg-slate-50' : ''} title={onEdit ? 'Editar paciente' : undefined}>
                                             <TableCell className="font-medium pl-6">{patient.code || '-'}</TableCell>
-                                            <TableCell>{patient.name || '-'}</TableCell>
+                                            <TableCell>{formatFullName(patient.name, patient.lastname) || '-'}</TableCell>
                                             <TableCell className="flex items-center gap-2 /*wa-icon*/">
                                                 <span className="truncate">{patient.phone || '-'}</span>
                                                 {patient.phone ? (
@@ -575,7 +496,7 @@ export function PatientsTable({ patients, filter, onEdit, asCard = true }: { pat
                                     paginatedPatients.map(patient => (
                                         <TableRow key={patient.id} onClick={() => onEdit?.(patient)} className={onEdit ? 'cursor-pointer hover:bg-slate-50' : ''} title={onEdit ? 'Editar paciente' : undefined}>
                                             <TableCell className="font-medium pl-6">{patient.code || '-'}</TableCell>
-                                            <TableCell>{patient.name || '-'}</TableCell>
+                                            <TableCell>{formatFullName(patient.name, patient.lastname) || '-'}</TableCell>
                                             <TableCell className="flex items-center gap-2 /*wa-icon*/">
                                                 <span className="truncate">{patient.phone || '-'}</span>
                                                 {patient.phone ? (

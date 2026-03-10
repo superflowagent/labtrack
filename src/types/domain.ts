@@ -26,6 +26,8 @@ export type Specialist = {
 export type Patient = {
   id: string
   name: string
+  lastname: string | null
+  dni: string | null
   phone: string | null
   email: string | null
   code: string | null
@@ -34,8 +36,8 @@ export type Patient = {
 
 export type JobStatus =
   | 'En laboratorio'
-  | 'En clinica (sin citar)'
-  | 'En clinica (citado)'
+  | 'En clínica (sin citar)'
+  | 'En clínica (citado)'
   | 'Cerrado'
 
 export type Job = {

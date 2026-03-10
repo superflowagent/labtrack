@@ -67,6 +67,7 @@ export const fetchPatients = async (clinicId: string) => {
     .from('patients')
     .select('*')
     .eq('clinic_id', clinicId)
+    .order('lastname', { ascending: true })
     .order('name', { ascending: true })
 
   if (error) throw error
@@ -107,12 +108,12 @@ export const createSpecialist = async (payload: { name: string; specialty?: stri
   return data as Specialist
 }
 
-export const createPatient = async (payload: { name: string; phone?: string | null; email?: string | null; code?: string | null }) => {
+export const createPatient = async (payload: { name: string; lastname?: string | null; dni?: string | null; phone?: string | null; email?: string | null; code?: string | null }) => {
   const clinic = await ensureActiveClinic()
   const clinicId = clinic.id
   const { data, error } = await supabase
     .from('patients')
-    .insert({ name: payload.name, phone: payload.phone ?? null, email: payload.email ?? null, code: payload.code ?? null, clinic_id: clinicId })
+    .insert({ name: payload.name, lastname: payload.lastname ?? null, dni: payload.dni ?? null, phone: payload.phone ?? null, email: payload.email ?? null, code: payload.code ?? null, clinic_id: clinicId })
     .select('*')
     .single()
 
@@ -123,14 +124,15 @@ export const createPatient = async (payload: { name: string; phone?: string | nu
 export const updateJob = async (id: string, payload: Partial<NewJob>) => {
   await ensureActiveClinic()
   // payload sólo debe tener patient_id, no patient_name ni patient_phone
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('jobs')
     .update(payload)
     .eq('id', id)
+    .select('*')
+    .single()
 
   if (error) throw error
-  // No se necesita devolver el job actualizado
-  return true
+  return data as Job
 }
 
 export const deleteJob = async (id: string) => {
@@ -176,12 +178,12 @@ export const updateSpecialist = async (id: string, payload: { name: string; spec
   return data as Specialist
 }
 
-export const updatePatient = async (id: string, payload: { name: string; phone?: string | null; email?: string | null; code?: string | null }) => {
+export const updatePatient = async (id: string, payload: { name: string; lastname?: string | null; dni?: string | null; phone?: string | null; email?: string | null; code?: string | null }) => {
   const clinic = await ensureActiveClinic()
   const clinicId = clinic.id
   const { data, error } = await supabase
     .from('patients')
-    .update({ name: payload.name, phone: payload.phone ?? null, email: payload.email ?? null, code: payload.code ?? null })
+    .update({ name: payload.name, lastname: payload.lastname ?? null, dni: payload.dni ?? null, phone: payload.phone ?? null, email: payload.email ?? null, code: payload.code ?? null })
     .eq('id', id)
     .eq('clinic_id', clinicId)
     .select('*')
