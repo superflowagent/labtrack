@@ -964,9 +964,7 @@ function DashboardPage() {
       const labDateText = orderDateValue
         ? `${weekdayFormatter.format(orderDateValue)} ${orderDateValue.getDate()} de ${monthFormatter.format(orderDateValue)}`
         : ''
-      const labWaUrl = labPhone
-        ? `https://wa.me/${labPhone}?text=${encodeURIComponent(`Hola ${labName},\nNos gustaría preguntar por el estado del trabajo que salió el ${labDateText}, del paciente ${patientFullName} (${jobDesc}).\nGracias y un saludo`)}`
-        : ''
+      const labWaUrl = `https://wa.me/${labPhone || ''}?text=${encodeURIComponent(`Hola${labName ? ` ${labName}` : ''},\nNos gustaría preguntar por el estado del trabajo que salió el ${labDateText}, del paciente ${patientFullName} (${jobDesc}).\nGracias y un saludo`)}`
 
       return {
         job,
@@ -1541,32 +1539,18 @@ function DashboardPage() {
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <span>{meta.labName || '-'}</span>
-                          {meta.labPhone ? (
-                            <a
-                              href={meta.labWaUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="ml-2 inline-flex items-center justify-center w-6 h-6 rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-700 shadow-sm transition-transform transform hover:scale-105"
-                              title="Enviar WhatsApp al laboratorio"
-                              tabIndex={0}
-                              onClick={(e) => e.stopPropagation()}
-                              onKeyDown={(e) => e.stopPropagation()}
-                            >
-                              <img src="/whatsapp.svg" alt="WhatsApp" className="w-4 h-4 pointer-events-none" />
-                            </a>
-                          ) : (
-                            <button
-                              type="button"
-                              aria-disabled="true"
-                              tabIndex={-1}
-                              onClick={(e) => e.stopPropagation()}
-                              onKeyDown={(e) => e.stopPropagation()}
-                              className="ml-2 inline-flex items-center justify-center w-6 h-6 rounded-md bg-transparent border border-slate-100 text-slate-300 cursor-not-allowed opacity-60 filter grayscale"
-                              title="Sin teléfono"
-                            >
-                              <img src="/whatsapp.svg" alt="WhatsApp" className="w-4 h-4 opacity-60 filter grayscale pointer-events-none" />
-                            </button>
-                          )}
+                          <a
+                            href={meta.labWaUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="ml-2 inline-flex items-center justify-center w-6 h-6 rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-700 shadow-sm transition-transform transform hover:scale-105"
+                            title="Enviar WhatsApp al laboratorio"
+                            tabIndex={0}
+                            onClick={(e) => e.stopPropagation()}
+                            onKeyDown={(e) => e.stopPropagation()}
+                          >
+                            <img src="/whatsapp.svg" alt="WhatsApp" className="w-4 h-4 pointer-events-none" />
+                          </a>
                         </div>
                       </TableCell>
                       <TableCell>{meta.specName || '-'}</TableCell>

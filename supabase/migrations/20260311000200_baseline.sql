@@ -1,6 +1,5 @@
 
 
-
 SET statement_timeout = 0;
 SET lock_timeout = 0;
 SET idle_in_transaction_session_timeout = 0;
@@ -13,56 +12,13 @@ SET client_min_messages = warning;
 SET row_security = off;
 
 
-CREATE EXTENSION IF NOT EXISTS "pg_cron" WITH SCHEMA "pg_catalog";
+CREATE SCHEMA IF NOT EXISTS "public";
 
 
-
-
-
-
-CREATE EXTENSION IF NOT EXISTS "pg_net" WITH SCHEMA "extensions";
-
-
-
-
+ALTER SCHEMA "public" OWNER TO "pg_database_owner";
 
 
 COMMENT ON SCHEMA "public" IS 'standard public schema';
-
-
-
-CREATE EXTENSION IF NOT EXISTS "pg_graphql" WITH SCHEMA "graphql";
-
-
-
-
-
-
-CREATE EXTENSION IF NOT EXISTS "pg_stat_statements" WITH SCHEMA "extensions";
-
-
-
-
-
-
-CREATE EXTENSION IF NOT EXISTS "pgcrypto" WITH SCHEMA "extensions";
-
-
-
-
-
-
-CREATE EXTENSION IF NOT EXISTS "supabase_vault" WITH SCHEMA "vault";
-
-
-
-
-
-
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp" WITH SCHEMA "extensions";
-
-
-
 
 
 
@@ -418,7 +374,7 @@ END;
 $$;
 
 
-/* consolidated: check_subscription_status removed (migration merged) */
+ALTER FUNCTION "public"."as_uuid_array"("_val" "anyelement") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."create_auth_user_for_profile"() RETURNS "trigger"
@@ -1374,7 +1330,7 @@ CREATE TABLE IF NOT EXISTS "public"."jobs" (
     "status" "text" NOT NULL,
     "clinic_id" "uuid" NOT NULL,
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    CONSTRAINT "jobs_status_check" CHECK (("status" = ANY (ARRAY['En laboratorio'::"text", 'En clinica (sin citar)'::"text", 'En clinica (citado)'::"text", 'Cerrado'::"text"])))
+    CONSTRAINT "jobs_status_check" CHECK (("status" = ANY (ARRAY['En laboratorio'::"text", 'En clínica (sin citar)'::"text", 'En clínica (citado)'::"text", 'Cerrado'::"text"])))
 );
 
 
@@ -1401,7 +1357,9 @@ CREATE TABLE IF NOT EXISTS "public"."patients" (
     "phone" "text",
     "email" "text",
     "code" "text",
-    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "lastname" "text",
+    "dni" "text"
 );
 
 
@@ -1511,16 +1469,35 @@ CREATE POLICY "Clinics are managed by owner" ON "public"."clinics" USING (("user
 
 
 
-CREATE POLICY "Jobs are scoped to clinic" ON public.jobs USING ((clinic_id IN (SELECT clinics.id FROM public.clinics WHERE clinics.user_id = auth.uid()))) WITH CHECK ((clinic_id IN (SELECT clinics.id FROM public.clinics WHERE clinics.user_id = auth.uid())));
+CREATE POLICY "Jobs are scoped to clinic" ON "public"."jobs" USING (("clinic_id" IN ( SELECT "clinics"."id"
+   FROM "public"."clinics"
+  WHERE ("clinics"."user_id" = "auth"."uid"())))) WITH CHECK (("clinic_id" IN ( SELECT "clinics"."id"
+   FROM "public"."clinics"
+  WHERE ("clinics"."user_id" = "auth"."uid"()))));
 
 
-CREATE POLICY "Laboratories are scoped to clinic" ON public.laboratories USING ((clinic_id IN (SELECT clinics.id FROM public.clinics WHERE clinics.user_id = auth.uid()))) WITH CHECK ((clinic_id IN (SELECT clinics.id FROM public.clinics WHERE clinics.user_id = auth.uid())));
+
+CREATE POLICY "Laboratories are scoped to clinic" ON "public"."laboratories" USING (("clinic_id" IN ( SELECT "clinics"."id"
+   FROM "public"."clinics"
+  WHERE ("clinics"."user_id" = "auth"."uid"())))) WITH CHECK (("clinic_id" IN ( SELECT "clinics"."id"
+   FROM "public"."clinics"
+  WHERE ("clinics"."user_id" = "auth"."uid"()))));
 
 
-CREATE POLICY "Patients are scoped to clinic" ON public.patients USING ((clinic_id IN (SELECT clinics.id FROM public.clinics WHERE clinics.user_id = auth.uid()))) WITH CHECK ((clinic_id IN (SELECT clinics.id FROM public.clinics WHERE clinics.user_id = auth.uid())));
+
+CREATE POLICY "Patients are scoped to clinic" ON "public"."patients" USING (("clinic_id" IN ( SELECT "clinics"."id"
+   FROM "public"."clinics"
+  WHERE ("clinics"."user_id" = "auth"."uid"())))) WITH CHECK (("clinic_id" IN ( SELECT "clinics"."id"
+   FROM "public"."clinics"
+  WHERE ("clinics"."user_id" = "auth"."uid"()))));
 
 
-CREATE POLICY "Specialists are scoped to clinic" ON public.specialists USING ((clinic_id IN (SELECT clinics.id FROM public.clinics WHERE clinics.user_id = auth.uid()))) WITH CHECK ((clinic_id IN (SELECT clinics.id FROM public.clinics WHERE clinics.user_id = auth.uid())));
+
+CREATE POLICY "Specialists are scoped to clinic" ON "public"."specialists" USING (("clinic_id" IN ( SELECT "clinics"."id"
+   FROM "public"."clinics"
+  WHERE ("clinics"."user_id" = "auth"."uid"())))) WITH CHECK (("clinic_id" IN ( SELECT "clinics"."id"
+   FROM "public"."clinics"
+  WHERE ("clinics"."user_id" = "auth"."uid"()))));
 
 
 
@@ -1538,249 +1515,11 @@ ALTER TABLE "public"."patients" ENABLE ROW LEVEL SECURITY;
 
 ALTER TABLE "public"."specialists" ENABLE ROW LEVEL SECURITY;
 
-DO $$
-DECLARE
-  v_clinic_id uuid := '76286946-65e9-4daa-a5ac-5114b67518b6';
-  v_patient_ids uuid[] := ARRAY[]::uuid[];
-  v_specialist_ids uuid[] := ARRAY[]::uuid[];
-  v_laboratory_ids uuid[] := ARRAY[]::uuid[];
-  i int;
-  v_patient_id uuid;
-  v_specialist_id uuid;
-  v_laboratory_id uuid;
-BEGIN
-  FOR i IN 1..100 LOOP
-    INSERT INTO patients (id, clinic_id, name, phone, email, code)
-    VALUES (gen_random_uuid(), v_clinic_id, 'Paciente ' || i, '+34' || (600000000 + i), 'paciente' || i || '@mail.com', 'P' || i)
-    RETURNING id INTO v_patient_id;
-    v_patient_ids := array_append(v_patient_ids, v_patient_id);
-  END LOOP;
-
-  FOR i IN 1..60 LOOP
-    INSERT INTO specialists (id, clinic_id, name, specialty, phone, email)
-    VALUES (gen_random_uuid(), v_clinic_id, 'Especialista ' || i, 'Especialidad ' || ((i % 10) + 1), '+34' || (700000000 + i), 'especialista' || i || '@mail.com')
-    RETURNING id INTO v_specialist_id;
-    v_specialist_ids := array_append(v_specialist_ids, v_specialist_id);
-  END LOOP;
-
-  FOR i IN 1..70 LOOP
-    INSERT INTO laboratories (id, clinic_id, name, phone, email)
-    VALUES (gen_random_uuid(), v_clinic_id, 'Laboratorio ' || i, '+34' || (800000000 + i), 'laboratorio' || i || '@mail.com')
-    RETURNING id INTO v_laboratory_id;
-    v_laboratory_ids := array_append(v_laboratory_ids, v_laboratory_id);
-  END LOOP;
-
-  FOR i IN 1..100 LOOP
-    INSERT INTO jobs (id, clinic_id, patient_id, specialist_id, laboratory_id, job_description, order_date, status)
-    VALUES (
-      gen_random_uuid(),
-      v_clinic_id,
-      v_patient_ids[1 + floor(random() * 100)],
-      v_specialist_ids[1 + floor(random() * 60)],
-      v_laboratory_ids[1 + floor(random() * 70)],
-      'Trabajo demo ' || i,
-      now() - (interval '1 day' * floor(random() * 30)),
-      (ARRAY['En laboratorio','En clinica (sin citar)','En clinica (citado)','Cerrado'])[1 + floor(random() * 4)]
-    );
-  END LOOP;
-END $$;
-
-
-
-
-ALTER PUBLICATION "supabase_realtime" OWNER TO "postgres";
-
-/* consolidated: reset_production_db.sql — defensive cleanup from earlier migration */
--- Drop objects that may exist from an incorrect/old project (idempotent)
-
-
-
-
-
-
-
 
 GRANT USAGE ON SCHEMA "public" TO "postgres";
 GRANT USAGE ON SCHEMA "public" TO "anon";
 GRANT USAGE ON SCHEMA "public" TO "authenticated";
 GRANT USAGE ON SCHEMA "public" TO "service_role";
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -1829,10 +1568,6 @@ GRANT ALL ON FUNCTION "public"."as_uuid_array"("_val" "anyarray") TO "service_ro
 GRANT ALL ON FUNCTION "public"."as_uuid_array"("_val" "anyelement") TO "anon";
 GRANT ALL ON FUNCTION "public"."as_uuid_array"("_val" "anyelement") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."as_uuid_array"("_val" "anyelement") TO "service_role";
-
-
-
-/* consolidated: removed grants for check_subscription_status */
 
 
 
@@ -2034,27 +1769,6 @@ GRANT ALL ON FUNCTION "public"."update_event_json"("p_payload" "jsonb") TO "serv
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 GRANT ALL ON TABLE "public"."clinics" TO "anon";
 GRANT ALL ON TABLE "public"."clinics" TO "authenticated";
 GRANT ALL ON TABLE "public"."clinics" TO "service_role";
@@ -2085,12 +1799,6 @@ GRANT ALL ON TABLE "public"."specialists" TO "service_role";
 
 
 
-
-
-
-
-
-
 ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON SEQUENCES TO "postgres";
 ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON SEQUENCES TO "anon";
 ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON SEQUENCES TO "authenticated";
@@ -2115,31 +1823,6 @@ ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TAB
 ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES TO "anon";
 ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES TO "authenticated";
 ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES TO "service_role";
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
