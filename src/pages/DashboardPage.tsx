@@ -1237,8 +1237,8 @@ function DashboardPage() {
   if (section === 'trabajos') {
     sectionContent = (
       <Card className="border-slate-200 bg-white/80 p-5 mb-0 flex flex-col flex-1 min-h-0 overflow-hidden">
-        <div className="grid gap-4 sm:grid-cols-4">
-          <div className="space-y-2">
+        <div className="flex gap-4 items-end mb-4">
+          <div className="space-y-2 flex-1">
             <Label>Buscar</Label>
             <Input
               value={filters.trabajo}
@@ -1246,7 +1246,7 @@ function DashboardPage() {
               placeholder="Buscar por paciente o trabajo"
             />
           </div>
-          <div className="space-y-2">
+          <div className="space-y-2 flex-1">
             <Label>Estado</Label>
             <Select value={filters.estado} onValueChange={(value) => setJobFilters((prev) => ({ ...prev, estado: value }))}>
               <SelectTrigger className={cn("transition-colors", filters.estado !== 'all' ? getStatusTextClass(filters.estado) : '')}>
@@ -1274,7 +1274,7 @@ function DashboardPage() {
               </SelectContent>
             </Select>
           </div>
-          <div className="space-y-2">
+          <div className="space-y-2 flex-1">
             <Label>Laboratorio</Label>
             <Select
               value={filters.laboratorioId}
@@ -1293,9 +1293,9 @@ function DashboardPage() {
               </SelectContent>
             </Select>
           </div>
-          <div className="space-y-4">
+          <div className="space-y-2 flex-1 relative pb-[10px]">
             <Label>Transcurrido (días)</Label>
-            <div className="relative mt-2">
+            <div className="relative mt-4">
               <input
                 type="range"
                 min={0}
@@ -1315,21 +1315,19 @@ function DashboardPage() {
               </div>
             </div>
           </div>
-        </div>
-        <div className="flex justify-start mt-4">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-xs hover:bg-rose-100 hover:text-rose-700"
-            onClick={() => setJobFilters({ ...DEFAULT_JOB_FILTERS })}
-          >
-            Restablecer filtros
-            {activeFiltersCount > 0 && (
+          {activeFiltersCount > 0 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-xs hover:bg-rose-100 hover:text-rose-700 h-10 mb-[2px]"
+              onClick={() => setJobFilters({ ...DEFAULT_JOB_FILTERS })}
+            >
+              Restablecer
               <span className="ml-2 inline-flex items-center rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700">
                 {activeFiltersCount}
               </span>
-            )}
-          </Button>
+            </Button>
+          )}
         </div>
         <div className="p-0 flex-1 min-h-0 overflow-auto">
           <Table>
@@ -1603,6 +1601,7 @@ function DashboardPage() {
           setFilters={setSpecialistsFilters}
           showPaciente={true}
           showLaboratorio={false}
+          placeholder="Buscar por nombre o especialidad"
         />
         <SpecialistsTable
           asCard={false}
@@ -1625,6 +1624,7 @@ function DashboardPage() {
           setFilters={setPatientsFilters}
           showPaciente={true}
           showLaboratorio={false}
+          placeholder="Buscar por código, nombre o DNI"
         />
         <PatientsTable
           asCard={false}

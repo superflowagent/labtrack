@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
 import { Logo } from '@/components/Logo'
@@ -7,16 +7,41 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card } from '@/components/ui/card'
 import { supabase } from '@/services/supabase/client'
+import { sendPasswordResetEmail } from '@/services/supabase/auth'
 
 export const LoginPage = () => {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const [isRegister, setIsRegister] = useState(searchParams.get('register') === '1')
+  const isForgot = searchParams.get('forgot') === '1'
+  const isRecovery = searchParams.get('recovery') === '1'
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
   const [clinicName, setClinicName] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [successMessage, setSuccessMessage] = useState<string | null>(null)
+
+  useEffect(() => {
+    setError(searchParams.get('error'))
+    setSuccessMessage(searchParams.get('reset') === 'success' ? 'Contraseña actualizada. Ya puedes iniciar sesión.' : null)
+  }, [searchParams])
+
+  useEffect(() => {
+    if (isForgot || isRecovery) {
+      setIsRegister(false)
+    }
+  }, [isForgot, isRecovery])
+
+  const title = isRecovery ? 'Restablecer contraseña' : isForgot ? 'Recuperar acceso' : isRegister ? 'Crear cuenta' : 'Acceso'
+  const description = isRecovery
+    ? 'Introduce tu nueva contraseña para completar la recuperación.'
+    : isForgot
+      ? 'Te enviaremos un enlace para restablecer tu contraseña.'
+      : isRegister
+        ? 'Registra tu clínica y empieza a trackear órdenes de trabajo.'
+        : ''
 
   const translateAuthError = (msg: string) => {
     if (!msg) return 'Error de autenticación'
@@ -77,9 +102,30 @@ export const LoginPage = () => {
     event.preventDefault()
     setLoading(true)
     setError(null)
+    setSuccessMessage(null)
 
     try {
-      if (isRegister) {
+      if (isRecovery) {
+        if (password.length < 6) {
+          throw new Error('La contraseña debe tener al menos 6 caracteres.')
+        }
+
+        if (password !== confirmPassword) {
+          throw new Error('Las contraseñas no coinciden')
+        }
+
+        const { error: updateError } = await supabase.auth.updateUser({ password })
+        if (updateError) throw updateError
+
+        setPassword('')
+        setConfirmPassword('')
+        navigate('/login?reset=success', { replace: true })
+      } else if (isForgot) {
+        const { error: resetError } = await sendPasswordResetEmail(email)
+        if (resetError) throw resetError
+
+        setSuccessMessage('Si existe una cuenta con ese email, te hemos enviado un enlace para restablecer la contraseña.')
+      } else if (isRegister) {
         const { data, error: signUpError } = await supabase.auth.signUp({
           email,
           password,
@@ -106,7 +152,9 @@ export const LoginPage = () => {
         if (signInError) throw signInError
       }
 
-      navigate('/dashboard')
+      if (!isRecovery && !isForgot) {
+        navigate('/dashboard')
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : ''
       setError(translateAuthError(message) || 'Error de autenticación')
@@ -125,43 +173,62 @@ export const LoginPage = () => {
               <ArrowLeft className="h-4 w-4" /> Volver
             </Link>
           </Button>
-          <h1 className="text-2xl font-semibold">{isRegister ? 'Crear cuenta' : 'Acceso'}</h1>
-          <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-            {isRegister && 'Registra tu clínica y empieza a trackear órdenes de trabajo.'}
-          </p>
+          <h1 className="text-2xl font-semibold">{title}</h1>
+          {description && <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">{description}</p>}
 
           <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
-            <div className="space-y-2">
-              <Label htmlFor="email" className="text-slate-700 dark:text-slate-200">
-                Email
-              </Label>
-              <Input
-                id="email"
-                type="email"
-                autoComplete="email"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                placeholder="nombre@clínica.com"
-                required
-              />
-            </div>
+            {!isRecovery && (
+              <div className="space-y-2">
+                <Label htmlFor="email" className="text-slate-700 dark:text-slate-200">
+                  Email
+                </Label>
+                <Input
+                  id="email"
+                  type="email"
+                  autoComplete="email"
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  placeholder="nombre@clínica.com"
+                  required
+                />
+              </div>
+            )}
 
-            <div className="space-y-2">
-              <Label htmlFor="password" className="text-slate-700 dark:text-slate-200">
-                Contraseña
-              </Label>
-              <Input
-                id="password"
-                type="password"
-                autoComplete={isRegister ? 'new-password' : 'current-password'}
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                placeholder={isRegister ? 'Mínimo 6 caracteres' : '******'}
-                required
-              />
-            </div>
+            {!isForgot && (
+              <div className="space-y-2">
+                <Label htmlFor="password" className="text-slate-700 dark:text-slate-200">
+                  {isRecovery ? 'Nueva contraseña' : 'Contraseña'}
+                </Label>
+                <Input
+                  id="password"
+                  type="password"
+                  autoComplete={isRegister || isRecovery ? 'new-password' : 'current-password'}
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  placeholder={isRegister || isRecovery ? 'Mínimo 6 caracteres' : '******'}
+                  required
+                />
+              </div>
+            )}
 
-            {isRegister && (
+            {isRecovery && (
+              <div className="space-y-2">
+                <Label htmlFor="confirm-password" className="text-slate-700 dark:text-slate-200">
+                  Confirmar contraseña
+                </Label>
+                <Input
+                  id="confirm-password"
+                  type="password"
+                  autoComplete="new-password"
+                  value={confirmPassword}
+                  onChange={(event) => setConfirmPassword(event.target.value)}
+                  placeholder="Repite la contraseña"
+                  required
+                />
+              </div>
+            )}
+
+            {isRegister && !isRecovery && (
               <div className="space-y-2">
                 <Label htmlFor="clinic" className="text-slate-700 dark:text-slate-200">
                   Nombre de la clínica
@@ -178,22 +245,49 @@ export const LoginPage = () => {
             )}
 
             {error && <p className="text-sm text-rose-600 dark:text-rose-300">{error}</p>}
+            {successMessage && <p className="text-sm text-emerald-600 dark:text-emerald-300">{successMessage}</p>}
 
             <Button type="submit" className="w-full bg-teal-600 text-white hover:bg-teal-500" disabled={loading}>
-              {loading ? 'Procesando...' : isRegister ? 'Crear cuenta' : 'Entrar'}
+              {loading ? 'Procesando...' : isRecovery ? 'Guardar nueva contraseña' : isForgot ? 'Enviar enlace de restablecimiento' : isRegister ? 'Crear cuenta' : 'Entrar'}
             </Button>
           </form>
 
-          <div className="mt-6 text-center text-sm text-slate-600 dark:text-slate-300">
-            {isRegister ? '¿Ya tienes cuenta?' : '¿Tu clínica aún no está registrada?'}{' '}
-            <button
-              type="button"
-              className="text-teal-700 hover:text-teal-500 dark:text-teal-300 dark:hover:text-teal-200"
-              onClick={() => setIsRegister((prev) => !prev)}
-            >
-              {isRegister ? 'Iniciar sesión' : 'Crear cuenta'}
-            </button>
-          </div>
+          {!isRecovery && !isForgot && (
+            <div className="mt-4 text-right text-sm">
+              <button
+                type="button"
+                className="text-teal-700 hover:text-teal-500 dark:text-teal-300 dark:hover:text-teal-200"
+                onClick={() => navigate('/login?forgot=1')}
+              >
+                Olvidé mi contraseña
+              </button>
+            </div>
+          )}
+
+          {!isRecovery && !isForgot && (
+            <div className="mt-6 text-center text-sm text-slate-600 dark:text-slate-300">
+              {isRegister ? '¿Ya tienes cuenta?' : '¿Tu clínica aún no está registrada?'}{' '}
+              <button
+                type="button"
+                className="text-teal-700 hover:text-teal-500 dark:text-teal-300 dark:hover:text-teal-200"
+                onClick={() => setIsRegister((prev) => !prev)}
+              >
+                {isRegister ? 'Iniciar sesión' : 'Crear cuenta'}
+              </button>
+            </div>
+          )}
+
+          {(isForgot || isRecovery) && (
+            <div className="mt-6 text-center text-sm text-slate-600 dark:text-slate-300">
+              <button
+                type="button"
+                className="text-teal-700 hover:text-teal-500 dark:text-teal-300 dark:hover:text-teal-200"
+                onClick={() => navigate('/login')}
+              >
+                Volver al acceso
+              </button>
+            </div>
+          )}
         </Card>
       </div>
     </div>

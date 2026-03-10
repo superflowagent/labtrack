@@ -390,10 +390,11 @@ export function PatientsTable({ patients, filter, onEdit, asCard = true }: { pat
                     <div className="p-0 flex-1 min-h-0 pb-16">
                         <Table ref={patientsTableRef}>
                             <colgroup>
-                                <col style={{ width: '20%' }} />
+                                <col style={{ width: '15%' }} />
                                 <col style={{ width: '30%' }} />
-                                <col style={{ width: '20%' }} />
-                                <col style={{ width: '30%' }} />
+                                <col style={{ width: '15%' }} />
+                                <col style={{ width: '15%' }} />
+                                <col style={{ width: '25%' }} />
                             </colgroup>
                             <TableHeader>
                                 <TableRow>
@@ -401,6 +402,7 @@ export function PatientsTable({ patients, filter, onEdit, asCard = true }: { pat
                                     <TableHead className="cursor-pointer" style={{ minWidth: 140 }} onClick={() => handleSort('name')}>
                                         Nombre {sortBy === 'name' ? (sortDir === 'asc' ? '▲' : '▼') : ''}
                                     </TableHead>
+                                    <TableHead style={{ minWidth: 110 }}>DNI</TableHead>
                                     <TableHead className="cursor-pointer" style={{ minWidth: 110 }} onClick={() => handleSort('phone')}>
                                         Móvil {sortBy === 'phone' ? (sortDir === 'asc' ? '▲' : '▼') : ''}
                                     </TableHead>
@@ -412,7 +414,7 @@ export function PatientsTable({ patients, filter, onEdit, asCard = true }: { pat
                             <TableBody>
                                 {sortedPatients.length === 0 ? (
                                     <TableRow>
-                                        <TableCell colSpan={4} className="text-center text-sm text-slate-500">
+                                        <TableCell colSpan={5} className="text-center text-sm text-slate-500">
                                             No hay pacientes.
                                         </TableCell>
                                     </TableRow>
@@ -421,6 +423,7 @@ export function PatientsTable({ patients, filter, onEdit, asCard = true }: { pat
                                         <TableRow key={patient.id} onClick={() => onEdit?.(patient)} className={onEdit ? 'cursor-pointer hover:bg-slate-50' : ''} title={onEdit ? 'Editar paciente' : undefined}>
                                             <TableCell className="font-medium pl-6">{patient.code || '-'}</TableCell>
                                             <TableCell>{formatFullName(patient.name, patient.lastname) || '-'}</TableCell>
+                                            <TableCell>{patient.dni || '-'}</TableCell>
                                             <TableCell className="flex items-center gap-2 /*wa-icon*/">
                                                 <span className="truncate">{patient.phone || '-'}</span>
                                                 {patient.phone ? (
@@ -466,10 +469,11 @@ export function PatientsTable({ patients, filter, onEdit, asCard = true }: { pat
                     <div className="p-0 flex-1 min-h-0 overflow-auto">
                         <Table ref={patientsTableRef}>
                             <colgroup>
-                                <col style={{ width: '20%' }} />
+                                <col style={{ width: '15%' }} />
                                 <col style={{ width: '30%' }} />
-                                <col style={{ width: '20%' }} />
-                                <col style={{ width: '30%' }} />
+                                <col style={{ width: '15%' }} />
+                                <col style={{ width: '15%' }} />
+                                <col style={{ width: '25%' }} />
                             </colgroup>
                             <TableHeader>
                                 <TableRow>
@@ -477,6 +481,7 @@ export function PatientsTable({ patients, filter, onEdit, asCard = true }: { pat
                                     <TableHead className="cursor-pointer" style={{ minWidth: 140 }} onClick={() => handleSort('name')}>
                                         Nombre {sortBy === 'name' ? (sortDir === 'asc' ? '▲' : '▼') : ''}
                                     </TableHead>
+                                    <TableHead style={{ minWidth: 110 }}>DNI</TableHead>
                                     <TableHead className="cursor-pointer" style={{ minWidth: 110 }} onClick={() => handleSort('phone')}>
                                         Móvil {sortBy === 'phone' ? (sortDir === 'asc' ? '▲' : '▼') : ''}
                                     </TableHead>
@@ -488,7 +493,7 @@ export function PatientsTable({ patients, filter, onEdit, asCard = true }: { pat
                             <TableBody>
                                 {sortedPatients.length === 0 ? (
                                     <TableRow>
-                                        <TableCell colSpan={4} className="text-center text-sm text-slate-500">
+                                        <TableCell colSpan={5} className="text-center text-sm text-slate-500">
                                             No hay pacientes.
                                         </TableCell>
                                     </TableRow>
@@ -497,6 +502,7 @@ export function PatientsTable({ patients, filter, onEdit, asCard = true }: { pat
                                         <TableRow key={patient.id} onClick={() => onEdit?.(patient)} className={onEdit ? 'cursor-pointer hover:bg-slate-50' : ''} title={onEdit ? 'Editar paciente' : undefined}>
                                             <TableCell className="font-medium pl-6">{patient.code || '-'}</TableCell>
                                             <TableCell>{formatFullName(patient.name, patient.lastname) || '-'}</TableCell>
+                                            <TableCell>{patient.dni || '-'}</TableCell>
                                             <TableCell className="flex items-center gap-2 /*wa-icon*/">
                                                 <span className="truncate">{patient.phone || '-'}</span>
                                                 {patient.phone ? (

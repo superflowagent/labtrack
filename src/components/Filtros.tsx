@@ -15,6 +15,7 @@ interface FiltrosProps {
     labs?: Array<{ id: string; name: string }>;
     showPaciente?: boolean;
     showLaboratorio?: boolean;
+    placeholder?: string;
 }
 
 export const Filtros: React.FC<FiltrosProps & { asCard?: boolean }> = ({
@@ -23,6 +24,7 @@ export const Filtros: React.FC<FiltrosProps & { asCard?: boolean }> = ({
     labs = [],
     showPaciente = true,
     showLaboratorio = true,
+    placeholder = "Buscar por nombre",
     asCard = true,
 }) => {
     const content = (
@@ -33,7 +35,7 @@ export const Filtros: React.FC<FiltrosProps & { asCard?: boolean }> = ({
                     <Input
                         value={filters.paciente || ''}
                         onChange={(event) => setFilters((prev) => ({ ...prev, paciente: event.target.value }))}
-                        placeholder="Buscar por nombre"
+                        placeholder={placeholder}
                     />
                 </div>
             )}
