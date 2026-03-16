@@ -14,10 +14,10 @@ import { supabase } from '@/services/supabase/client'
 
 
 const DashboardLayout = () => (
-  <div className="flex min-h-screen">
+  <div className="flex flex-col md:flex-row min-h-screen">
     {/* Sidebar ahora recibe el nombre de la clínica como prop */}
     <Sidebar />
-    <main className="flex-1 bg-slate-50">
+    <main className="flex-1 bg-slate-50 min-w-0 flex flex-col">
       <Outlet />
     </main>
   </div>

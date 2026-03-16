@@ -11,7 +11,7 @@ interface SectionHeaderProps {
  * Alinea icono, título y botón "Nuevo" con altura fija.
  */
 export const SectionHeader: React.FC<SectionHeaderProps> = ({ icon, title, newButton }) => (
-  <div className="flex items-center justify-between mb-6 h-12 w-full">
+  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 sm:h-12 w-full">
     <div className="flex items-center gap-3">
       {icon}
       <h1 className="text-2xl font-semibold text-slate-700">{title}</h1>

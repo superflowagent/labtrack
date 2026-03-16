@@ -1236,9 +1236,9 @@ function DashboardPage() {
   let sectionContent: ReactNode = null
   if (section === 'trabajos') {
     sectionContent = (
-      <Card className="border-slate-200 bg-white/80 p-5 mb-0 flex flex-col flex-1 min-h-0 overflow-hidden">
-        <div className="flex gap-4 items-end mb-4">
-          <div className="space-y-2 flex-1">
+      <Card className="border-slate-200 bg-white/80 p-3 md:p-5 mb-0 flex flex-col flex-1 min-h-0 overflow-hidden">
+        <div className="flex flex-col md:flex-row md:items-end gap-3 md:gap-4 mb-4">
+          <div className="space-y-2 w-full md:w-auto md:flex-1">
             <Label>Buscar</Label>
             <Input
               value={filters.trabajo}
@@ -1246,7 +1246,7 @@ function DashboardPage() {
               placeholder="Buscar por paciente o trabajo"
             />
           </div>
-          <div className="space-y-2 flex-1">
+          <div className="space-y-2 w-full md:w-auto md:flex-1">
             <Label>Estado</Label>
             <Select value={filters.estado} onValueChange={(value) => setJobFilters((prev) => ({ ...prev, estado: value }))}>
               <SelectTrigger className={cn("transition-colors", filters.estado !== 'all' ? getStatusTextClass(filters.estado) : '')}>
@@ -1274,7 +1274,7 @@ function DashboardPage() {
               </SelectContent>
             </Select>
           </div>
-          <div className="space-y-2 flex-1">
+          <div className="space-y-2 w-full md:w-auto md:flex-1">
             <Label>Laboratorio</Label>
             <Select
               value={filters.laboratorioId}
@@ -1293,7 +1293,7 @@ function DashboardPage() {
               </SelectContent>
             </Select>
           </div>
-          <div className="space-y-2 flex-1 relative pb-[10px]">
+          <div className="space-y-2 w-full md:w-auto md:flex-1 relative pb-[10px]">
             <Label>Transcurrido (días)</Label>
             <div className="relative mt-4">
               <input
@@ -1319,7 +1319,7 @@ function DashboardPage() {
             <Button
               variant="ghost"
               size="sm"
-              className="text-xs hover:bg-rose-100 hover:text-rose-700 h-10 mb-[2px]"
+              className="text-xs hover:bg-rose-100 hover:text-rose-700 h-10 mb-[2px] w-full md:w-auto"
               onClick={() => setJobFilters({ ...DEFAULT_JOB_FILTERS })}
             >
               Restablecer
@@ -1330,7 +1330,7 @@ function DashboardPage() {
           )}
         </div>
         <div className="p-0 flex-1 min-h-0 overflow-auto">
-          <Table>
+          <Table className="min-w-[1000px] md:min-w-full">
             <colgroup>
               <col style={{ width: '25.46%' }} />
               <col style={{ width: '19.09%' }} />
@@ -1572,7 +1572,7 @@ function DashboardPage() {
     );
   } else if (section === 'laboratorios') {
     sectionContent = (
-      <Card className="border-slate-200 bg-white/80 p-5 mb-0 flex flex-col flex-1 min-h-0 overflow-hidden">
+      <Card className="border-slate-200 bg-white/80 p-3 md:p-5 mb-0 flex flex-col flex-1 min-h-0 overflow-hidden">
         <Filtros
           asCard={false}
           filters={labsFilters}
@@ -1594,7 +1594,7 @@ function DashboardPage() {
     )
   } else if (section === 'especialistas') {
     sectionContent = (
-      <Card className="border-slate-200 bg-white/80 p-5 mb-0 flex flex-col flex-1 min-h-0 overflow-hidden">
+      <Card className="border-slate-200 bg-white/80 p-3 md:p-5 mb-0 flex flex-col flex-1 min-h-0 overflow-hidden">
         <Filtros
           asCard={false}
           filters={specialistsFilters}
@@ -1617,7 +1617,7 @@ function DashboardPage() {
     )
   } else if (section === 'pacientes') {
     sectionContent = (
-      <Card className="border-slate-200 bg-white/80 p-5 mb-0 flex flex-col flex-1 min-h-0 overflow-hidden">
+      <Card className="border-slate-200 bg-white/80 p-3 md:p-5 mb-0 flex flex-col flex-1 min-h-0 overflow-hidden">
         <Filtros
           asCard={false}
           filters={patientsFilters}
@@ -1643,7 +1643,7 @@ function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-slate-100">
-      <div className="mx-auto w-full px-6 pt-4 pb-6 h-screen flex flex-col">
+      <div className="mx-auto w-full px-3 md:px-6 pt-2 md:pt-4 pb-4 md:pb-6 h-screen flex flex-col">
         {/* Eliminado: lógica de bloqueo por suscripción */}
         <>
           <SectionHeader
