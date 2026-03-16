@@ -1330,15 +1330,15 @@ function DashboardPage() {
           )}
         </div>
         <div className="p-0 flex-1 min-h-0 overflow-auto">
-          <Table className="min-w-[1000px] md:min-w-full">
+          <Table className="min-w-[1200px] w-full table-fixed">
             <colgroup>
-              <col style={{ width: '25.46%' }} />
-              <col style={{ width: '19.09%' }} />
-              <col style={{ width: '15.45%' }} />
-              <col style={{ width: '11%' }} />
-              <col style={{ width: '9%' }} />
-              <col style={{ width: '10%' }} />
-              <col style={{ width: '10%' }} />
+              <col style={{ width: '20%' }} />
+              <col style={{ width: '15%' }} />
+              <col style={{ width: '18%' }} />
+              <col style={{ width: '18%' }} />
+              <col style={{ width: '13%' }} />
+              <col style={{ width: '8%' }} />
+              <col style={{ width: '8%' }} />
             </colgroup>
             <TableHeader>
               <TableRow>
@@ -1367,7 +1367,7 @@ function DashboardPage() {
                   Trabajo {filters.sortBy === 'trabajo' ? (filters.sortDir === 'asc' ? '▲' : '▼') : ''}
                 </TableHead>
                 <TableHead
-                  className="cursor-pointer"
+                  className="cursor-pointer pr-6"
                   onClick={() => {
                     if (filters.sortBy === 'estado') {
                       setJobFilters((prev) => ({ ...prev, sortDir: prev.sortDir === 'asc' ? 'desc' : 'asc' }))
@@ -1379,7 +1379,7 @@ function DashboardPage() {
                   Estado {filters.sortBy === 'estado' ? (filters.sortDir === 'asc' ? '▲' : '▼') : ''}
                 </TableHead>
                 <TableHead
-                  className="cursor-pointer"
+                  className="cursor-pointer pl-6"
                   onClick={() => {
                     if (filters.sortBy === 'laboratorio') {
                       setJobFilters((prev) => ({ ...prev, sortDir: prev.sortDir === 'asc' ? 'desc' : 'asc' }))
@@ -1500,7 +1500,7 @@ function DashboardPage() {
                         </div>
                       </TableCell>
                       <TableCell>{job.job_description || 'Sin descripción'}</TableCell>
-                      <TableCell className="w-60 max-w-[16rem]">
+                      <TableCell className="pr-6">
                         <Select
                           value={job.status}
                           onValueChange={(v) => void handleQuickChangeStatus(job.id, v as JobStatus)}
@@ -1534,7 +1534,7 @@ function DashboardPage() {
                           </SelectContent>
                         </Select>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="pl-6">
                         <div className="flex items-center gap-2">
                           <span>{meta.labName || '-'}</span>
                           <a
@@ -1552,8 +1552,8 @@ function DashboardPage() {
                         </div>
                       </TableCell>
                       <TableCell>{meta.specName || '-'}</TableCell>
-                      <TableCell className="pl-8">{meta.orderDateText}</TableCell>
-                      <TableCell>{meta.elapsedText}</TableCell>
+                      <TableCell className="pl-8 whitespace-nowrap">{meta.orderDateText}</TableCell>
+                      <TableCell className="whitespace-nowrap">{meta.elapsedText}</TableCell>
                     </TableRow>
                   );
                 })}

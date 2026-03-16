@@ -64,7 +64,7 @@ export function Sidebar() {
 
             {/* Mobile Overlay */}
             {isMobileOpen && (
-                <div 
+                <div
                     className="fixed inset-0 z-50 bg-slate-900/50 md:hidden transition-opacity"
                     onClick={() => setIsMobileOpen(false)}
                 />
@@ -81,7 +81,7 @@ export function Sidebar() {
                         <span style={{ color: '#545454' }}>Lab</span>
                         <span style={{ color: '#14b8a6' }}>track</span>
                     </div>
-                    <button 
+                    <button
                         onClick={() => setIsMobileOpen(false)}
                         className="md:hidden p-2 text-slate-400 hover:text-slate-600 rounded-md"
                     >

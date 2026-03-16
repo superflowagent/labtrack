@@ -78,7 +78,7 @@ export function LaboratoriesTable({ labs, filter, onEdit, asCard = true }: { lab
             {asCard ? (
                 <Card className="border-slate-200 bg-white flex flex-col flex-1 min-h-0 overflow-hidden">
                     <div className="p-0 flex-1 min-h-0 overflow-auto">
-                        <Table ref={labsTableRef} className="min-w-[800px] md:min-w-full">
+                        <Table ref={labsTableRef} className="min-w-[800px] w-full">
                             <colgroup>
                                 <col style={{ width: '40%' }} />
                                 <col style={{ width: '30%' }} />
@@ -126,7 +126,7 @@ export function LaboratoriesTable({ labs, filter, onEdit, asCard = true }: { lab
             ) : (
                 <>
                     <div className="p-0 flex-1 min-h-0 overflow-auto">
-                        <Table ref={labsTableRef} className="min-w-[800px] md:min-w-full">
+                        <Table ref={labsTableRef} className="min-w-[800px] w-full">
                             <colgroup>
                                 <col style={{ width: '40%' }} />
                                 <col style={{ width: '30%' }} />
@@ -232,7 +232,7 @@ export function SpecialistsTable({ specialists, filter, onEdit, asCard = true }:
             {asCard ? (
                 <Card className="border-slate-200 bg-white flex flex-col flex-1 min-h-0 overflow-hidden">
                     <div className="p-0 flex-1 min-h-0 overflow-auto">
-                        <Table ref={specsTableRef} className="min-w-[800px] md:min-w-full">
+                        <Table ref={specsTableRef} className="min-w-[800px] w-full">
                             <colgroup>
                                 <col style={{ width: '30%' }} />
                                 <col style={{ width: '30%' }} />
@@ -281,7 +281,7 @@ export function SpecialistsTable({ specialists, filter, onEdit, asCard = true }:
             ) : (
                 <>
                     <div className="p-0 flex-1 min-h-0 overflow-auto">
-                        <Table ref={specsTableRef} className="min-w-[800px] md:min-w-full">
+                        <Table ref={specsTableRef} className="min-w-[800px] w-full">
                             <colgroup>
                                 <col style={{ width: '30%' }} />
                                 <col style={{ width: '30%' }} />
