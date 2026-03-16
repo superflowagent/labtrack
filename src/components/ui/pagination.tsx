@@ -27,20 +27,18 @@ export const Pagination: React.FC<PaginationProps> = ({
     const end = Math.min(total, currentPage * safePageSize)
 
     return (
-        <div className="flex items-center justify-between w-full">
-            <div className="text-sm text-slate-500">Mostrando {start}-{end} de {total}</div>
-            <div className="flex items-center gap-2">
-                <Button variant="ghost" size="sm" onClick={() => onPageChange(Math.max(1, currentPage - 1))} disabled={currentPage <= 1} aria-label="Página anterior">
-                    <ChevronLeft className="h-4 w-4" />
+        <div className="flex w-full items-end justify-between gap-3">
+            <div className="self-end text-sm leading-none text-slate-500">Mostrando {start}-{end} de {total}</div>
+            <div className="flex items-end gap-1.5">
+                <Button variant="ghost" size="sm" className="h-7 self-end items-end px-2 pb-0" onClick={() => onPageChange(Math.max(1, currentPage - 1))} disabled={currentPage <= 1} aria-label="Página anterior">
+                    <ChevronLeft className="relative top-px h-3.5 w-3.5" />
                 </Button>
 
-                <div className="text-sm text-slate-700">Página {currentPage} / {totalPages}</div>
+                <div className="self-end text-sm leading-none text-slate-700">Página {currentPage} / {totalPages}</div>
 
-                <Button variant="ghost" size="sm" onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))} disabled={currentPage >= totalPages} aria-label="Página siguiente">
-                    <ChevronRight className="h-4 w-4" />
+                <Button variant="ghost" size="sm" className="h-7 self-end items-end px-2 pb-0" onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))} disabled={currentPage >= totalPages} aria-label="Página siguiente">
+                    <ChevronRight className="relative top-px h-3.5 w-3.5" />
                 </Button>
-
-
             </div>
         </div>
     )
