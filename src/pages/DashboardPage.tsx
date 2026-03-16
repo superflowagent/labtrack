@@ -1315,11 +1315,11 @@ function DashboardPage() {
               </div>
             </div>
           </div>
-          {activeFiltersCount > 0 && (
+          {activeFiltersCount > 0 ? (
             <Button
               variant="ghost"
               size="sm"
-              className="text-xs hover:bg-rose-100 hover:text-rose-700 h-10 mb-[2px] w-full md:w-auto"
+              className="text-xs hover:bg-rose-100 hover:text-rose-700 h-10 mb-[12px] md:mb-[2px] w-full md:w-[110px] shrink-0"
               onClick={() => setJobFilters({ ...DEFAULT_JOB_FILTERS })}
             >
               Restablecer
@@ -1327,9 +1327,11 @@ function DashboardPage() {
                 {activeFiltersCount}
               </span>
             </Button>
+          ) : (
+            <div className="hidden md:block w-[110px] shrink-0" aria-hidden="true" />
           )}
         </div>
-        <div className="p-0 flex-1 min-h-0 overflow-auto">
+        <div className="p-0 flex-1 min-h-0 overflow-y-scroll overflow-x-auto">
           <Table className="min-w-[1200px] w-full table-fixed">
             <colgroup>
               <col style={{ width: '20%' }} />
