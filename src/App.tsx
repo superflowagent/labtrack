@@ -5,23 +5,58 @@ import { LandingPage } from '@/pages/LandingPage'
 import { LoginPage } from '@/pages/LoginPage'
 import OgPreview from '@/pages/OgPreview'
 import DashboardPage from '@/pages/DashboardPage'
+import LaboratoryDashboardPage from '@/pages/LaboratoryDashboardPage'
 import { Sidebar } from '@/components/Sidebar'
 import AvisoLegalPage from '@/pages/AvisoLegalPage'
 import PoliticaPrivacidadPage from '@/pages/PoliticaPrivacidadPage'
 import CondicionesUsoPage from '@/pages/CondicionesUsoPage'
 import PoliticaCookiesPage from '@/pages/PoliticaCookiesPage'
 import { supabase } from '@/services/supabase/client'
+import { useCurrentActor } from '@/hooks/useCurrentActor'
+import { ActorContext } from '@/contexts/ActorContext'
+import { Button } from '@/components/ui/button'
+import { signOut } from '@/services/supabase/auth'
 
 
-const DashboardLayout = () => (
-  <div className="flex flex-col md:flex-row min-h-screen">
-    {/* Sidebar ahora recibe el nombre de la clínica como prop */}
-    <Sidebar />
-    <main className="flex-1 bg-slate-50 min-w-0 flex flex-col">
-      <Outlet />
-    </main>
-  </div>
-)
+const DashboardHome = () => {
+  const actor = useCurrentActor()
+
+  useEffect(() => {
+    if (!actor.actor) return
+    window.actorDisplayName = actor.actor.displayName
+    window.clinicName = actor.actor.displayName
+    window.dispatchEvent(new Event('clinicNameChanged'))
+  }, [actor.actor])
+
+  if (actor.loading) {
+    return <div className="flex min-h-screen items-center justify-center bg-slate-50 text-slate-600">Cargando acceso...</div>
+  }
+
+  if (actor.error || !actor.actor) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-50 px-6">
+        <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <h1 className="text-lg font-semibold text-slate-900">No se pudo abrir el dashboard</h1>
+          <p className="mt-2 text-sm text-slate-600">{actor.error || 'No tienes acceso disponible.'}</p>
+          <Button className="mt-4 w-full bg-teal-600 text-white hover:bg-teal-500" onClick={() => void signOut()}>
+            Volver al acceso
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <ActorContext.Provider value={actor.actor}>
+      <div className="flex flex-col md:flex-row min-h-screen">
+        <Sidebar />
+        <main className="flex-1 bg-slate-50 min-w-0 flex flex-col">
+          {actor.actor.role === 'clinic' ? <DashboardPage /> : <LaboratoryDashboardPage />}
+        </main>
+      </div>
+    </ActorContext.Provider>
+  )
+}
 
 const AuthRecoveryHandler = () => {
   const location = useLocation()
@@ -75,8 +110,8 @@ const App = () => {
         <Route path="/politica-privacidad" element={<PoliticaPrivacidadPage />} />
         <Route path="/condiciones-uso" element={<CondicionesUsoPage />} />
         <Route path="/politica-cookies" element={<PoliticaCookiesPage />} />
-        <Route path="/dashboard" element={<DashboardLayout />}>
-          <Route index element={<DashboardPage />} />
+        <Route path="/dashboard" element={<DashboardHome />}>
+          <Route index element={<Outlet />} />
           <Route path="patients" element={<Navigate to="/dashboard" replace />} />
           <Route path="patients/ajustes" element={<Navigate to="/dashboard" replace />} />
         </Route>

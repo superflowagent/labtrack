@@ -1,10 +1,11 @@
 import { type ReactNode } from 'react'
 import { cn } from '@/lib/utils'
-import { BadgeCheck, Clock, Archive, FlaskConical } from 'lucide-react'
+import { BadgeCheck, Clock, Archive, FlaskConical, Send } from 'lucide-react'
 import type { JobStatus } from '@/types/domain'
 
 const STATUS_COLORS: Record<JobStatus, string> = {
   'En laboratorio': 'bg-blue-100 text-blue-800 border-blue-200',
+  'En envío': 'bg-sky-100 text-sky-800 border-sky-200',
   'En clínica (sin citar)': 'bg-yellow-100 text-yellow-800 border-yellow-200',
   'En clínica (citado)': 'bg-emerald-100 text-emerald-800 border-emerald-200',
   'Cerrado': 'bg-slate-200 text-slate-600 border-slate-300',
@@ -12,6 +13,7 @@ const STATUS_COLORS: Record<JobStatus, string> = {
 
 const STATUS_ICONS: Record<JobStatus, ReactNode> = {
   'En laboratorio': <FlaskConical className="w-4 h-4 mr-1" />,
+  'En envío': <Send className="w-4 h-4 mr-1" />,
   'En clínica (sin citar)': <Clock className="w-4 h-4 mr-1" />,
   'En clínica (citado)': <BadgeCheck className="w-4 h-4 mr-1" />,
   'Cerrado': <Archive className="w-4 h-4 mr-1" />,

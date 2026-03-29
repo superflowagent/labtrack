@@ -11,8 +11,9 @@ import {
 import { useEffect, useState } from "react"
 
 import { signOut } from "@/services/supabase/auth"
+import { useActor } from '@/contexts/ActorContext'
 
-const navItems: {
+const clinicNavItems: {
     label: string
     tab: "trabajos" | "laboratorios" | "especialistas" | "pacientes" | "ajustes"
     icon: React.ComponentType<{ className?: string }>
@@ -24,14 +25,23 @@ const navItems: {
         { label: "Ajustes", tab: "ajustes", icon: Settings },
     ]
 
+const laboratoryNavItems: typeof clinicNavItems = [
+    { label: "Trabajos", tab: "trabajos", icon: LayoutList },
+    { label: "Ajustes", tab: "ajustes", icon: Settings },
+]
+
 export function Sidebar() {
+    const actor = useActor()
     const [clinicName, setClinicName] = useState<string | null>(null);
     const [activeSection, setActiveSection] = useState<'trabajos' | 'laboratorios' | 'especialistas' | 'pacientes' | 'ajustes'>(window.dashboardSection ?? 'trabajos')
     const [isMobileOpen, setIsMobileOpen] = useState(false)
+    const navItems = actor.role === 'clinic' ? clinicNavItems : laboratoryNavItems
+    const allowedTabs = new Set(navItems.map((item) => item.tab))
+    const normalizedActiveSection = allowedTabs.has(activeSection) ? activeSection : 'trabajos'
 
     useEffect(() => {
         // Escuchar cambios en window.clinicName mediante un evento personalizado
-        const updateClinicName = () => setClinicName(window.clinicName || null);
+        const updateClinicName = () => setClinicName(window.actorDisplayName || window.clinicName || null);
         updateClinicName();
         window.addEventListener('clinicNameChanged', updateClinicName);
         return () => {
@@ -90,7 +100,7 @@ export function Sidebar() {
                 </div>
                 <nav className="flex flex-1 flex-col gap-2 overflow-y-auto">
                     {navItems.map(({ label, tab, icon: Icon }) => {
-                        const isActive = activeSection === tab
+                        const isActive = normalizedActiveSection === tab
                         return (
                             <div key={tab} className="flex flex-col">
                                 <button

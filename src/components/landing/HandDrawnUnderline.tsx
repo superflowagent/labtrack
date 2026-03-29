@@ -44,7 +44,7 @@ const buildUnderlineStroke = (): string => {
 }
 
 export const HandDrawnUnderline = () => {
-  const path = useMemo(buildUnderlineStroke, [])
+  const path = useMemo(() => buildUnderlineStroke(), [])
 
   return (
     <svg

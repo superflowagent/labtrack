@@ -2,9 +2,11 @@ import { format, formatDistanceToNow, parseISO, differenceInCalendarDays } from 
 import { es } from 'date-fns/locale'
 import { forwardRef, useCallback, useDeferredValue, useEffect, useImperativeHandle, useMemo, useRef, useState, startTransition, type ReactNode } from 'react'
 import { formatFullName, normalizeSearch, cn } from '@/lib/utils'
-import { ClipboardPlus, FlaskConical, Stethoscope, UserRound, Clock, CalendarCheck, Archive } from 'lucide-react'
+import { ClipboardPlus, FlaskConical, Stethoscope, UserRound, Clock, CalendarCheck, Archive, Send } from 'lucide-react'
 import { Filtros } from '@/components/Filtros'
+import { JobCommentsPanel } from '@/components/JobCommentsPanel'
 import { SectionHeader } from '@/components/SectionHeader'
+import { NotificationCenter } from '@/components/NotificationCenter'
 import { Button } from '@/components/ui/button'
 import { Calendar } from '@/components/ui/calendar'
 import { Card, CardFooter } from '@/components/ui/card'
@@ -37,8 +39,8 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { useJobs } from '@/hooks/useJobs'
+import { useActor } from '@/contexts/ActorContext'
 import { supabase } from '@/services/supabase/client'
-import { getClinicForUser } from '@/services/supabase/clinic'
 import {
   createLaboratory,
   createPatient,
@@ -47,17 +49,21 @@ import {
   deleteLaboratory,
   deletePatient,
   deleteSpecialist,
+  fetchLaboratoryAccessByLaboratoryId,
   updateJob,
   updateLaboratory,
   updatePatient,
   updateSpecialist,
 } from '@/services/supabase/queries'
-import type { Job, JobStatus, Laboratory, NewJob, Specialist, Patient } from '@/types/domain'
+import { createLaboratoryAccess, setLaboratoryAccessActive } from '@/services/supabase/laboratoryAccess'
+import { hasUnreadJobComments } from '@/lib/jobComments'
+import type { Job, JobStatus, Laboratory, LaboratoryUser, NewJob, Specialist, Patient } from '@/types/domain'
 import { LaboratoriesTable, PatientsTable, SpecialistsTable } from './LaboratoriesSpecialistsTables'
 import ClinicSettings from '@/pages/ClinicSettings'
 
 const STATUSES: JobStatus[] = [
   'En laboratorio',
+  'En envío',
   'En clínica (sin citar)',
   'En clínica (citado)',
   'Cerrado',
@@ -67,6 +73,8 @@ const getStatusTextClass = (status?: string) => {
   switch (status) {
     case 'En laboratorio':
       return 'text-yellow-600'
+    case 'En envío':
+      return 'text-sky-700'
     case 'En clínica (sin citar)':
       return 'text-orange-700'
     case 'En clínica (citado)':
@@ -82,6 +90,8 @@ const getStatusBgClass = (status?: string) => {
   switch (status) {
     case 'En laboratorio':
       return 'bg-yellow-50 text-yellow-700 border-yellow-200'
+    case 'En envío':
+      return 'bg-sky-50 text-sky-700 border-sky-200'
     case 'En clínica (sin citar)':
       return 'bg-orange-50 text-orange-800 border-orange-200'
     case 'En clínica (citado)':
@@ -98,6 +108,8 @@ const getStatusPillClass = (status?: string) => {
   switch (status) {
     case 'En laboratorio':
       return 'w-[186px] flex items-center justify-between gap-2 h-7 rounded-full bg-yellow-50 px-3 py-0.5 text-xs font-medium text-yellow-700'
+    case 'En envío':
+      return 'w-[186px] flex items-center justify-between gap-2 h-7 rounded-full bg-sky-50 px-3 py-0.5 text-xs font-medium text-sky-700'
     case 'En clínica (sin citar)':
       return 'w-[186px] flex items-center justify-between gap-2 h-7 rounded-full bg-orange-100 px-3 py-0.5 text-xs font-medium text-orange-800'
     case 'En clínica (citado)':
@@ -113,6 +125,8 @@ const getStatusIcon = (status: string) => {
   switch (status) {
     case 'En laboratorio':
       return <FlaskConical className="h-3.5 w-3.5 shrink-0" />
+    case 'En envío':
+      return <Send className="h-3.5 w-3.5 shrink-0" />
     case 'En clínica (sin citar)':
       return <Clock className="h-3.5 w-3.5 shrink-0" />
     case 'En clínica (citado)':
@@ -192,10 +206,51 @@ function LabDialog({ open, editingLabId, initialValues, pendingJobModal, onSaved
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [access, setAccess] = useState<LaboratoryUser | null>(null)
+  const [accessEmail, setAccessEmail] = useState('')
+  const [accessPassword, setAccessPassword] = useState('')
+  const [accessLoading, setAccessLoading] = useState(false)
+  const [accessSaving, setAccessSaving] = useState(false)
+  const [accessError, setAccessError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (open) { setForm(initialValues); setError(null) }
+    if (open) {
+      setForm(initialValues)
+      setError(null)
+      setAccessEmail(initialValues.email)
+      setAccessPassword('')
+      setAccessError(null)
+    }
   }, [open]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (!open || !editingLabId) {
+      setAccess(null)
+      return
+    }
+
+    let mounted = true
+    setAccessLoading(true)
+    setAccessError(null)
+
+    fetchLaboratoryAccessByLaboratoryId(editingLabId)
+      .then((data) => {
+        if (!mounted) return
+        setAccess(data)
+        if (data?.email) setAccessEmail(data.email)
+      })
+      .catch((err) => {
+        if (!mounted) return
+        setAccessError(err instanceof Error ? err.message : 'No se pudo cargar el acceso')
+      })
+      .finally(() => {
+        if (mounted) setAccessLoading(false)
+      })
+
+    return () => {
+      mounted = false
+    }
+  }, [editingLabId, open])
 
   const handleSave = async () => {
     setSaving(true); setError(null)
@@ -221,9 +276,40 @@ function LabDialog({ open, editingLabId, initialValues, pendingJobModal, onSaved
     } finally { setDeleting(false) }
   }
 
+  const handleCreateAccess = async () => {
+    if (!editingLabId) return
+    setAccessSaving(true)
+    setAccessError(null)
+
+    try {
+      const result = await createLaboratoryAccess(editingLabId, accessEmail.trim(), accessPassword)
+      setAccess(result.access)
+      setAccessPassword('')
+    } catch (err) {
+      setAccessError(err instanceof Error ? err.message : 'No se pudo crear el acceso')
+    } finally {
+      setAccessSaving(false)
+    }
+  }
+
+  const handleToggleAccess = async (isActive: boolean) => {
+    if (!editingLabId) return
+    setAccessSaving(true)
+    setAccessError(null)
+
+    try {
+      const result = await setLaboratoryAccessActive(editingLabId, isActive)
+      setAccess(result.access)
+    } catch (err) {
+      setAccessError(err instanceof Error ? err.message : 'No se pudo actualizar el acceso')
+    } finally {
+      setAccessSaving(false)
+    }
+  }
+
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(pendingJobModal) }}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>{editingLabId ? 'Editar laboratorio' : 'Nuevo laboratorio'}</DialogTitle>
           <DialogDescription>Completa la información del {editingLabId ? 'laboratorio' : 'nuevo laboratorio'}</DialogDescription>
@@ -244,6 +330,58 @@ function LabDialog({ open, editingLabId, initialValues, pendingJobModal, onSaved
             </div>
           </div>
           {error && <p className="text-sm text-rose-600">{error}</p>}
+          {editingLabId ? (
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h3 className="text-sm font-semibold text-slate-900">Acceso a Labtrack</h3>
+                </div>
+                {access ? (
+                  <span className={`inline-flex rounded-full px-3 py-1 text-xs font-medium ${access.is_active ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}`}>
+                    {access.is_active ? 'Activo' : 'Revocado'}
+                  </span>
+                ) : null}
+              </div>
+              {accessLoading ? <p className="mt-4 text-sm text-slate-500">Cargando acceso...</p> : null}
+              {!accessLoading && access ? (
+                <div className="mt-4 space-y-4">
+                  <div className="space-y-2">
+                    <Label>Email de acceso</Label>
+                    <Input value={access.email} readOnly />
+                  </div>
+                  <div className="flex gap-3">
+                    {access.is_active ? (
+                      <Button type="button" variant="destructive" disabled={accessSaving} onClick={() => void handleToggleAccess(false)}>
+                        {accessSaving ? 'Revocando...' : 'Revocar acceso'}
+                      </Button>
+                    ) : (
+                      <Button type="button" className="bg-emerald-600 text-white hover:bg-emerald-500" disabled={accessSaving} onClick={() => void handleToggleAccess(true)}>
+                        {accessSaving ? 'Reactivando...' : 'Reactivar acceso'}
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              ) : null}
+              {!accessLoading && !access ? (
+                <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label>Email de acceso</Label>
+                    <Input value={accessEmail} onChange={(e) => setAccessEmail(e.target.value)} placeholder="laboratorio@ejemplo.com" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Contraseña temporal</Label>
+                    <Input type="password" value={accessPassword} onChange={(e) => setAccessPassword(e.target.value)} placeholder="Mínimo 6 caracteres" />
+                  </div>
+                  <div className="sm:col-span-2">
+                    <Button type="button" className="bg-slate-900 text-white hover:bg-slate-800" disabled={accessSaving} onClick={() => void handleCreateAccess()}>
+                      {accessSaving ? 'Creando acceso...' : 'Crear acceso al laboratorio'}
+                    </Button>
+                  </div>
+                </div>
+              ) : null}
+              {accessError ? <p className="mt-3 text-sm text-rose-600">{accessError}</p> : null}
+            </div>
+          ) : null}
           <div className="flex gap-4">
             {editingLabId && (
               <Button type="button" variant="destructive" className="flex-1" disabled={saving || deleting} onClick={handleDelete}>
@@ -460,13 +598,14 @@ interface JobDialogProps {
   addJob: (data: Omit<NewJob, 'clinic_id'>) => Promise<Job>
   onOpenChange: (open: boolean) => void
   onSaved: (job: Job, isNew: boolean) => void
+  onPatched: (job: Job) => void
   onDeleted: (job: Job) => void
   onNewLab: () => void
   onNewSpec: () => void
   onNewPatient: () => void
 }
 const JobDialog = forwardRef<JobDialogHandle, JobDialogProps>(function JobDialog(
-  { open, editingJob, patients, patientsById, labs, specialists, addJob, onOpenChange, onSaved, onDeleted, onNewLab, onNewSpec, onNewPatient },
+  { open, editingJob, patients, patientsById, labs, specialists, addJob, onOpenChange, onSaved, onPatched, onDeleted, onNewLab, onNewSpec, onNewPatient },
   ref,
 ) {
   const [form, setForm] = useState<JobForm>(getEmptyJobForm)
@@ -551,6 +690,11 @@ const JobDialog = forwardRef<JobDialogHandle, JobDialogProps>(function JobDialog
         specialist_id: form.specialist_id || null,
         order_date: orderDateValue,
         status: form.status,
+        shared_notes: editingJob?.shared_notes || null,
+        clinic_last_viewed_comment_at: editingJob?.clinic_last_viewed_comment_at || null,
+        laboratory_last_viewed_comment_at: editingJob?.laboratory_last_viewed_comment_at || null,
+        last_comment_at: editingJob?.last_comment_at || null,
+        last_comment_by_role: editingJob?.last_comment_by_role || null,
       }
       if (editingJob) {
         const updated = await updateJob(editingJob.id, payload)
@@ -713,6 +857,14 @@ const JobDialog = forwardRef<JobDialogHandle, JobDialogProps>(function JobDialog
             </div>
           </div>
 
+          {editingJob ? (
+            <JobCommentsPanel
+              job={editingJob}
+              actorRole="clinic"
+              onJobPatch={(patch) => onPatched({ ...editingJob, ...patch })}
+            />
+          ) : null}
+
           {error && <p className="text-sm text-rose-600">{error}</p>}
 
           <div className="flex gap-4">
@@ -732,6 +884,11 @@ const JobDialog = forwardRef<JobDialogHandle, JobDialogProps>(function JobDialog
 })
 
 function DashboardPage() {
+  const actor = useActor()
+  if (actor.role !== 'clinic') {
+    throw new Error('DashboardPage requires a clinic actor')
+  }
+
   const [section, setSection] = useState<'trabajos' | 'laboratorios' | 'especialistas' | 'pacientes' | 'ajustes'>('trabajos')
   const {
     jobs,
@@ -748,7 +905,7 @@ function DashboardPage() {
     upsertLocalLaboratory,
     upsertLocalSpecialist,
     upsertLocalPatient,
-  } = useJobs()
+  } = useJobs(actor.clinic.name)
 
   const patientsById = useMemo(() => {
     const m: Record<string, typeof patients[number]> = {}
@@ -792,16 +949,6 @@ function DashboardPage() {
   }, [section])
 
   // Eliminado: lógica de billingBlocked y billingChecked
-  useEffect(() => {
-    const initDashboard = async () => {
-      const clinic = await getClinicForUser()
-      if (clinic?.name) {
-        window.clinicName = clinic.name
-        window.dispatchEvent(new Event('clinicNameChanged'))
-      }
-    }
-    initDashboard().catch(() => { })
-  }, [])
 
   const [filters, setFilters] = useState<JobFilters>(DEFAULT_JOB_FILTERS)
   const [labsFilters, setLabsFilters] = useState<BasicFilters>({ paciente: '' })
@@ -893,14 +1040,6 @@ function DashboardPage() {
     }
   }, [showNewJobOnboarding])
 
-  useEffect(() => {
-    // si el modal de 'Nuevo trabajo' se abre, marca el onboarding como visto
-    if (open && showNewJobOnboarding) {
-      setShowNewJobOnboarding(false)
-      void markNewJobSeen()
-    }
-  }, [open, showNewJobOnboarding])
-
   const [labOpen, setLabOpen] = useState(false)
   const [editingLabId, setEditingLabId] = useState<string | null>(null)
 
@@ -981,6 +1120,7 @@ function DashboardPage() {
         orderDateText,
         elapsedText,
         labWaUrl,
+        hasUnreadComments: hasUnreadJobComments(job, 'clinic'),
       }
     })
   }, [formatter, jobs, labsById, monthFormatter, now, patientsById, section, specsById, weekdayFormatter])
@@ -1003,9 +1143,11 @@ function DashboardPage() {
     return values.length ? Math.max(...values) : 0
   }, [jobsAfterBaseFilters, section])
 
+  const effectiveMaxDaysElapsed = Math.min(filters.maxDaysElapsed, maxElapsedDays)
+
   const filteredJobs = useMemo(() => {
     if (section !== 'trabajos') return []
-    const minElapsedDays = typeof filters.maxDaysElapsed === 'number' ? filters.maxDaysElapsed : 0
+    const minElapsedDays = typeof effectiveMaxDaysElapsed === 'number' ? effectiveMaxDaysElapsed : 0
     let filtered = minElapsedDays > 0
       ? jobsAfterBaseFilters.filter(({ elapsedDays }) => elapsedDays >= minElapsedDays)
       : jobsAfterBaseFilters
@@ -1041,7 +1183,7 @@ function DashboardPage() {
     })
 
     return filtered
-  }, [filters.maxDaysElapsed, filters.sortBy, filters.sortDir, jobsAfterBaseFilters, section])
+  }, [effectiveMaxDaysElapsed, filters.sortBy, filters.sortDir, jobsAfterBaseFilters, section])
 
   const [jobsPage, setJobsPage] = useState(1)
   // fixed page size per your request (max 50)
@@ -1059,12 +1201,6 @@ function DashboardPage() {
 
   const sliderMax = Math.max(0, maxElapsedDays)
   const isElapsedDisabled = section !== 'trabajos' || jobsAfterBaseFilters.length === 0
-
-  useEffect(() => {
-    if (filters.maxDaysElapsed > maxElapsedDays) {
-      setFilters((prev) => ({ ...prev, maxDaysElapsed: maxElapsedDays }))
-    }
-  }, [filters.maxDaysElapsed, maxElapsedDays])
 
   const handleQuickChangeStatus = async (jobId: string, status: JobStatus) => {
     const job = jobs.find((j) => j.id === jobId)
@@ -1098,6 +1234,11 @@ function DashboardPage() {
           specialist_id: job.specialist_id || null,
           order_date: job.order_date || null,
           status: job.status,
+          shared_notes: job.shared_notes || null,
+          clinic_last_viewed_comment_at: job.clinic_last_viewed_comment_at || null,
+          laboratory_last_viewed_comment_at: job.laboratory_last_viewed_comment_at || null,
+          last_comment_at: job.last_comment_at || null,
+          last_comment_by_role: job.last_comment_by_role || null,
         })
         await reload()
         return
@@ -1132,6 +1273,13 @@ function DashboardPage() {
     setEditingJob(null)
   }
 
+  const handleJobPatched = (job: Job) => {
+    upsertLocalJob(job)
+    if (open) {
+      setEditingJob(job)
+    }
+  }
+
   const handleJobDeleted = (job: Job) => {
     removeLocalJob(job.id)
     setSnackbar({ open: true, kind: 'job', item: job, message: 'Trabajo eliminado' })
@@ -1145,6 +1293,17 @@ function DashboardPage() {
       setEditingJob(null)
     }
   }
+
+  const handleNotificationClick = useCallback((notification: { job_id: string | null }) => {
+    if (!notification.job_id) return
+
+    const job = jobs.find((item) => item.id === notification.job_id)
+    if (!job) return
+
+    startTransition(() => setSection('trabajos'))
+    setEditingJob(job)
+    setOpen(true)
+  }, [jobs])
 
   // ─── Lab dialog callbacks ──────────────────────────────────────────────────
   const handleLabSaved = (lab: Laboratory, reopenJobModal: boolean) => {
@@ -1301,7 +1460,7 @@ function DashboardPage() {
                 min={0}
                 max={sliderMax}
                 step={1}
-                value={filters.maxDaysElapsed ?? 0}
+                value={effectiveMaxDaysElapsed ?? 0}
                 onChange={(e) => setJobFilters((prev) => ({ ...prev, maxDaysElapsed: Number(e.target.value) }))}
                 className="w-full accent-teal-600 transition-all duration-150 ease-in-out disabled:cursor-not-allowed disabled:opacity-40"
                 aria-label="Filtrar por días transcurridos"
@@ -1309,9 +1468,9 @@ function DashboardPage() {
               />
               <div
                 className="absolute top-0 text-sm text-slate-600 pointer-events-none whitespace-nowrap transition-all duration-150 ease-in-out"
-                style={{ left: `${sliderMax ? ((filters.maxDaysElapsed ?? 0) / sliderMax) * 100 : 0}%`, transform: 'translate(-50%, -100%)' }}
+                style={{ left: `${sliderMax ? ((effectiveMaxDaysElapsed ?? 0) / sliderMax) * 100 : 0}%`, transform: 'translate(-50%, -100%)' }}
               >
-                {!isElapsedDisabled && filters.maxDaysElapsed && filters.maxDaysElapsed > 0 ? `≥ ${filters.maxDaysElapsed}d` : ''}
+                {!isElapsedDisabled && effectiveMaxDaysElapsed && effectiveMaxDaysElapsed > 0 ? `≥ ${effectiveMaxDaysElapsed}d` : ''}
               </div>
             </div>
           </div>
@@ -1467,7 +1626,10 @@ function DashboardPage() {
                         setEditingJob(job)
                         setOpen(true)
                       }}
-                      className="cursor-pointer hover:bg-slate-50"
+                      className={cn(
+                        'cursor-pointer hover:bg-slate-50',
+                        meta.hasUnreadComments ? 'bg-amber-50/70 ring-1 ring-inset ring-amber-200 hover:bg-amber-50' : '',
+                      )}
                     >
                       <TableCell className="font-medium">
                         <div className="flex items-center gap-3">
@@ -1522,6 +1684,9 @@ function DashboardPage() {
                           <SelectContent position="popper" onClick={(e) => e.stopPropagation()}>
                             <SelectItem value="En laboratorio" className={getStatusTextClass('En laboratorio')}>
                               <span className="flex items-center gap-2">{getStatusIcon('En laboratorio')}En laboratorio</span>
+                            </SelectItem>
+                            <SelectItem value="En envío" className={getStatusTextClass('En envío')}>
+                              <span className="flex items-center gap-2">{getStatusIcon('En envío')}En envío</span>
                             </SelectItem>
                             <SelectItem value="En clínica (sin citar)" className={getStatusTextClass('En clínica (sin citar)')}>
                               <span className="flex items-center gap-2">{getStatusIcon('En clínica (sin citar)')}En clínica (sin citar)</span>
@@ -1657,46 +1822,60 @@ function DashboardPage() {
             }
             title={sectionTitle}
             newButton={(() => {
+              const notificationButton = <NotificationCenter onNotificationClick={handleNotificationClick} />
+
               if (section === 'trabajos') {
                 return (
-                  <Button
-                    ref={newJobButtonRef}
-                    className={`bg-teal-600 text-white hover:bg-teal-500 ${showNewJobOnboarding ? 'relative z-50 onboarding-cta' : ''}`}
-                    onClick={() => {
-                      setEditingJob(null)
-                      setOpen(true)
-                      if (showNewJobOnboarding) {
-                        setShowNewJobOnboarding(false)
-                        void markNewJobSeen()
-                      }
-                    }}
-                  >
-                    <ClipboardPlus className="mr-2 h-4 w-4" /> Nuevo trabajo
-                  </Button>
+                  <>
+                    {notificationButton}
+                    <Button
+                      ref={newJobButtonRef}
+                      className={`bg-teal-600 text-white hover:bg-teal-500 ${showNewJobOnboarding ? 'relative z-50 onboarding-cta' : ''}`}
+                      onClick={() => {
+                        setEditingJob(null)
+                        setOpen(true)
+                        if (showNewJobOnboarding) {
+                          setShowNewJobOnboarding(false)
+                          void markNewJobSeen()
+                        }
+                      }}
+                    >
+                      <ClipboardPlus className="mr-2 h-4 w-4" /> Nuevo trabajo
+                    </Button>
+                  </>
                 )
               }
               if (section === 'laboratorios') {
                 return (
-                  <Button className="bg-teal-600 text-white hover:bg-teal-500" onClick={() => { setEditingLabId(null); setLabOpen(true); setPendingLaboratorySelection(false); }}>
-                    <FlaskConical className="mr-2 h-4 w-4" /> Nuevo laboratorio
-                  </Button>
+                  <>
+                    {notificationButton}
+                    <Button className="bg-teal-600 text-white hover:bg-teal-500" onClick={() => { setEditingLabId(null); setLabOpen(true); setPendingLaboratorySelection(false); }}>
+                      <FlaskConical className="mr-2 h-4 w-4" /> Nuevo laboratorio
+                    </Button>
+                  </>
                 )
               }
               if (section === 'especialistas') {
                 return (
-                  <Button className="bg-teal-600 text-white hover:bg-teal-500" onClick={() => { setEditingSpecId(null); setSpecOpen(true); setPendingSpecialistSelection(false); }}>
-                    <Stethoscope className="mr-2 h-4 w-4" /> Nuevo especialista
-                  </Button>
+                  <>
+                    {notificationButton}
+                    <Button className="bg-teal-600 text-white hover:bg-teal-500" onClick={() => { setEditingSpecId(null); setSpecOpen(true); setPendingSpecialistSelection(false); }}>
+                      <Stethoscope className="mr-2 h-4 w-4" /> Nuevo especialista
+                    </Button>
+                  </>
                 )
               }
               if (section === 'pacientes') {
                 return (
-                  <Button className="bg-teal-600 text-white hover:bg-teal-500" onClick={() => { setEditingPatientId(null); setPatientOpen(true); setPendingPatientSelection(false); }}>
-                    <UserRound className="mr-2 h-4 w-4" /> Nuevo paciente
-                  </Button>
+                  <>
+                    {notificationButton}
+                    <Button className="bg-teal-600 text-white hover:bg-teal-500" onClick={() => { setEditingPatientId(null); setPatientOpen(true); setPendingPatientSelection(false); }}>
+                      <UserRound className="mr-2 h-4 w-4" /> Nuevo paciente
+                    </Button>
+                  </>
                 )
               }
-              return null
+              return notificationButton
             })()}
           />
 
@@ -1752,6 +1931,7 @@ function DashboardPage() {
         addJob={addJob}
         onOpenChange={handleJobOpenChange}
         onSaved={handleJobSaved}
+        onPatched={handleJobPatched}
         onDeleted={handleJobDeleted}
         onNewLab={() => {
           setPendingLaboratorySelection(true)

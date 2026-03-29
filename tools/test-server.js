@@ -1,7 +1,8 @@
 import dotenv from 'dotenv'
 import express from 'express';
+import { handleLaboratoryAccessRequest } from '../api/laboratory-access-shared.js'
 
-// load local env when running `node test-server.js`
+// load local env when running `node tools/test-server.js`
 dotenv.config({ path: '.env.local' })
 
 const app = express();
@@ -16,7 +17,7 @@ app.use((req, res, next) => {
     }
 
     res.header('Vary', 'Origin');
-    res.header('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+    res.header('Access-Control-Allow-Methods', 'GET,POST,PATCH,OPTIONS');
     res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
     if (req.method === 'OPTIONS') {
@@ -117,5 +118,13 @@ app.post('/api/checkout', async (req, res) => {
         })
     }
 });
+
+app.post('/api/laboratory-access', async (req, res) => {
+    await handleLaboratoryAccessRequest(req, res)
+})
+
+app.patch('/api/laboratory-access', async (req, res) => {
+    await handleLaboratoryAccessRequest(req, res)
+})
 
 app.listen(3001);

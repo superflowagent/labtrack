@@ -1,7 +1,8 @@
 import { supabase } from './client'
 import { getClinicForUser } from './clinic'
 import { subscriptionEnforcementEnabled } from '@/lib/billing'
-import type { Job, Laboratory, NewJob, Patient, Specialist, Clinic } from '@/types/domain'
+import { createLaboratoryNotificationForNewJob } from './notifications'
+import type { Job, Laboratory, LaboratoryUser, NewJob, Patient, Specialist, Clinic } from '@/types/domain'
 
 export const getClinicIdForUser = async () => {
   const { data, error } = await supabase.auth.getUser()
@@ -34,6 +35,17 @@ export const fetchJobs = async (clinicId: string) => {
     .from('jobs')
     .select('*')
     .eq('clinic_id', clinicId)
+    .order('order_date', { ascending: false })
+
+  if (error) throw error
+  return (data ?? []) as Job[]
+}
+
+export const fetchLaboratoryJobs = async (laboratoryId: string) => {
+  const { data, error } = await supabase
+    .from('jobs')
+    .select('*')
+    .eq('laboratory_id', laboratoryId)
     .order('order_date', { ascending: false })
 
   if (error) throw error
@@ -74,11 +86,38 @@ export const fetchPatients = async (clinicId: string) => {
   return (data ?? []) as Patient[]
 }
 
+export const fetchLaboratoryPatients = async (laboratoryId: string) => {
+  const { data, error } = await supabase
+    .from('patients')
+    .select('*')
+    .order('lastname', { ascending: true })
+    .order('name', { ascending: true })
+
+  if (error) throw error
+
+  const patientIds = new Set((await fetchLaboratoryJobs(laboratoryId)).map((job) => job.patient_id).filter(Boolean))
+  return ((data ?? []) as Patient[]).filter((patient) => patientIds.has(patient.id))
+}
+
+export const fetchLaboratoryAccessByLaboratoryId = async (laboratoryId: string) => {
+  const { data, error } = await supabase
+    .from('laboratory_users')
+    .select('id, clinic_id, laboratory_id, user_id, email, is_active, created_at, updated_at')
+    .eq('laboratory_id', laboratoryId)
+    .maybeSingle()
+
+  if (error) throw error
+  return (data ?? null) as LaboratoryUser | null
+}
+
 export const createJob = async (job: NewJob) => {
   // job sólo debe tener patient_id, no patient_name ni patient_phone
-  await ensureActiveClinic()
+  const clinic = await ensureActiveClinic()
   const { data, error } = await supabase.from('jobs').insert(job).select('*').single()
   if (error) throw error
+  if (data?.laboratory_id) {
+    void createLaboratoryNotificationForNewJob(data as Job, clinic.name).catch(() => { })
+  }
   return data as Job
 }
 
@@ -121,9 +160,7 @@ export const createPatient = async (payload: { name: string; lastname?: string |
   return data as Patient
 }
 
-export const updateJob = async (id: string, payload: Partial<NewJob>) => {
-  await ensureActiveClinic()
-  // payload sólo debe tener patient_id, no patient_name ni patient_phone
+export const updateJobRecord = async (id: string, payload: Partial<NewJob>) => {
   const { data, error } = await supabase
     .from('jobs')
     .update(payload)
@@ -133,6 +170,11 @@ export const updateJob = async (id: string, payload: Partial<NewJob>) => {
 
   if (error) throw error
   return data as Job
+}
+
+export const updateJob = async (id: string, payload: Partial<NewJob>) => {
+  await ensureActiveClinic()
+  return updateJobRecord(id, payload)
 }
 
 export const deleteJob = async (id: string) => {

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { Job, Laboratory, NewJob, Patient, Specialist } from '@/types/domain'
 import { createJob, fetchJobs, fetchLaboratories, fetchPatients, fetchSpecialists, getClinicIdForUser } from '@/services/supabase/queries'
+import { syncTenDayJobNotifications } from '@/services/supabase/notifications'
 
 const sortJobs = (items: Job[]) => {
   return items.slice().sort((left, right) => {
@@ -22,7 +23,7 @@ const sortByName = <T extends { name: string }>(items: T[]) => {
   return items.slice().sort((left, right) => left.name.localeCompare(right.name, 'es', { sensitivity: 'base' }))
 }
 
-export const useJobs = () => {
+export const useJobs = (clinicName: string) => {
   const [jobs, setJobs] = useState<Job[]>([])
   const [labs, setLabs] = useState<Laboratory[]>([])
   const [specialists, setSpecialists] = useState<Specialist[]>([])
@@ -88,6 +89,20 @@ export const useJobs = () => {
   useEffect(() => {
     void load()
   }, [load])
+
+  useEffect(() => {
+    if (!clinicName || jobs.length === 0 || labs.length === 0) return
+
+    const laboratoryNamesById = Object.fromEntries(labs.map((lab) => [lab.id, lab.name]))
+
+    const sync = () => {
+      void syncTenDayJobNotifications({ jobs, clinicName, laboratoryNamesById }).catch(() => { })
+    }
+
+    sync()
+    const interval = window.setInterval(sync, 60000)
+    return () => window.clearInterval(interval)
+  }, [clinicName, jobs, labs])
 
   const addJob = useCallback(
     async (payload: Omit<NewJob, 'clinic_id'>) => {
