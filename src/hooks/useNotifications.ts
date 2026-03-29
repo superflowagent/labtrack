@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { deleteNotification, fetchNotificationsForActor, markNotificationAsRead } from '@/services/supabase/notifications'
+import { deleteNotification, fetchNotificationsForActor, fetchUnreadNotificationCountForActor, markNotificationAsRead } from '@/services/supabase/notifications'
 import type { AppActor, AppNotification } from '@/types/domain'
 
 export const useNotifications = (actor: AppActor) => {
     const [notifications, setNotifications] = useState<AppNotification[]>([])
+    const [unreadCount, setUnreadCount] = useState(0)
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
 
@@ -11,8 +12,12 @@ export const useNotifications = (actor: AppActor) => {
         setLoading(true)
         setError(null)
         try {
-            const items = await fetchNotificationsForActor(actor)
+            const [items, unreadTotal] = await Promise.all([
+                fetchNotificationsForActor(actor),
+                fetchUnreadNotificationCountForActor(actor),
+            ])
             setNotifications(items)
+            setUnreadCount(unreadTotal)
         } catch (err) {
             setError(err instanceof Error ? err.message : 'No se pudieron cargar las notificaciones')
         } finally {
@@ -35,15 +40,13 @@ export const useNotifications = (actor: AppActor) => {
         }
     }, [load])
 
-    const unreadCount = useMemo(
-        () => notifications.reduce((count, notification) => count + (notification.read_at ? 0 : 1), 0),
-        [notifications],
-    )
+    const unreadBadgeLabel = useMemo(() => (unreadCount > 20 ? '+20' : `${unreadCount}`), [unreadCount])
 
     const markAsRead = useCallback(async (notificationId: string) => {
         setNotifications((current) => current.map((item) => (
             item.id === notificationId ? { ...item, read_at: item.read_at || new Date().toISOString() } : item
         )))
+        setUnreadCount((current) => Math.max(0, current - 1))
 
         try {
             await markNotificationAsRead(notificationId)
@@ -67,6 +70,7 @@ export const useNotifications = (actor: AppActor) => {
     return {
         notifications,
         unreadCount,
+        unreadBadgeLabel,
         loading,
         error,
         reload: load,

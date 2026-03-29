@@ -73,6 +73,21 @@ export const fetchNotificationsForActor = async (actor: AppActor) => {
     return (data ?? []) as AppNotification[]
 }
 
+export const fetchUnreadNotificationCountForActor = async (actor: AppActor) => {
+    let query = supabase
+        .from('notifications')
+        .select('id', { count: 'exact', head: true })
+        .is('read_at', null)
+
+    query = actor.role === 'clinic'
+        ? query.eq('clinic_id', actor.clinic.id).eq('recipient_role', 'clinic')
+        : query.eq('laboratory_id', actor.laboratory.id).eq('recipient_role', 'laboratory')
+
+    const { count, error } = await query
+    if (error) throw error
+    return count ?? 0
+}
+
 export const markNotificationAsRead = async (notificationId: string) => {
     const { data, error } = await supabase
         .from('notifications')

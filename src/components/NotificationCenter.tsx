@@ -41,7 +41,7 @@ const renderNotificationBody = (notification: AppNotification) => {
 
 export function NotificationCenter({ onNotificationClick }: NotificationCenterProps) {
     const actor = useActor()
-    const { notifications, unreadCount, loading, error, markAsRead, removeNotification } = useNotifications(actor)
+    const { notifications, unreadCount, unreadBadgeLabel, loading, error, markAsRead, removeNotification } = useNotifications(actor)
     const [open, setOpen] = useState(false)
 
     return (
@@ -52,12 +52,12 @@ export function NotificationCenter({ onNotificationClick }: NotificationCenterPr
                     <span className="sr-only">Abrir notificaciones</span>
                     {unreadCount > 0 ? (
                         <span className="absolute -right-2 -top-2 inline-flex min-h-5 min-w-5 items-center justify-center rounded-full bg-rose-500 px-1.5 text-[10px] font-semibold text-white">
-                            {unreadCount}
+                            {unreadBadgeLabel}
                         </span>
                     ) : null}
                 </Button>
             </PopoverTrigger>
-            <PopoverContent align="end" className="w-[360px] p-0">
+            <PopoverContent align="end" className="w-[440px] p-0">
                 <div className="border-b border-slate-200 px-4 py-3">
                     <h3 className="text-sm font-semibold text-slate-900">Notificaciones</h3>
                 </div>
@@ -83,9 +83,9 @@ export function NotificationCenter({ onNotificationClick }: NotificationCenterPr
                                         setOpen(false)
                                     }}
                                 >
-                                    <div className="flex items-center justify-between gap-4">
-                                        <span className="text-sm font-medium text-slate-900">{notification.title}</span>
-                                        <span className="text-[11px] text-slate-500">
+                                    <div className="flex items-start justify-between gap-4">
+                                        <span className="min-w-0 flex-1 text-sm font-medium text-slate-900">{notification.title}</span>
+                                        <span className="shrink-0 whitespace-nowrap text-[11px] text-slate-500">
                                             {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true, locale: es })}
                                         </span>
                                     </div>
