@@ -4,6 +4,7 @@ import { ArrowRight, MessageSquareMore, Send } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { StatusBadge } from '@/components/ui/status-badge'
+import { formatElapsedSeconds } from '@/lib/jobStatusTimer'
 import { createJobComment, fetchJobComments, markJobCommentsAsSeen } from '@/services/supabase/jobComments'
 import { cn } from '@/lib/utils'
 import type { AppRole, Job, JobComment } from '@/types/domain'
@@ -104,6 +105,7 @@ export function JobCommentsPanel({ job, actorRole, onJobPatch }: JobCommentsPane
         return comments.map((comment) => {
             if (comment.comment_kind === 'status_change') {
                 const actorName = comment.actor_display_name || 'Alguien'
+                const previousElapsedText = formatElapsedSeconds(comment.previous_status_elapsed_seconds)
 
                 return (
                     <div key={comment.id} className="flex justify-center">
@@ -117,8 +119,13 @@ export function JobCommentsPanel({ job, actorRole, onJobPatch }: JobCommentsPane
                             ) : (
                                 <p className="whitespace-pre-wrap leading-5">{comment.body}</p>
                             )}
-                            <div className="mt-1 text-[11px] text-slate-500">
-                                {formatTimestamp(comment.created_at)} - {actorName}
+                            <div className="mt-1 flex items-center justify-between gap-3 text-[11px] text-slate-500">
+                                <span className="text-left">
+                                    {previousElapsedText ? `(${previousElapsedText})` : ''}
+                                </span>
+                                <span className="text-right">
+                                    {formatTimestamp(comment.created_at)} - {actorName}
+                                </span>
                             </div>
                         </div>
                     </div>

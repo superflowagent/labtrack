@@ -91,6 +91,7 @@ export type JobComment = {
   actor_display_name: string | null
   previous_status: JobStatus | null
   next_status: JobStatus | null
+  previous_status_elapsed_seconds: number | null
   created_at: string
 }
 

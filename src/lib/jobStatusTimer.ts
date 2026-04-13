@@ -1,4 +1,4 @@
-import { differenceInCalendarDays, formatDistance, parseISO } from 'date-fns'
+import { differenceInCalendarDays, formatDistance, formatDistanceStrict, parseISO } from 'date-fns'
 import { es } from 'date-fns/locale'
 import type { Job, JobStatus } from '@/types/domain'
 
@@ -6,7 +6,18 @@ const CLINIC_PENDING_STATUS: JobStatus = 'En clínica (sin citar)'
 const CLINIC_SCHEDULED_STATUS: JobStatus = 'En clínica (citado)'
 
 const normalizeElapsedDistanceText = (value: string) => {
-    return value.replace(/\balrededor(?: de)?\s*/i, '').trim()
+    const normalized = value.trim()
+
+    if (/^menos de un minuto$/i.test(normalized)) {
+        return '1 minuto'
+    }
+
+    const nearYearsMatch = normalized.match(/^casi\s+(\d+)\s+años$/i)
+    if (nearYearsMatch) {
+        return `${nearYearsMatch[1]} años`
+    }
+
+    return normalized.replace(/\balrededor(?: de)?\s*/i, '').trim()
 }
 
 const parseDate = (value: string | null) => {
@@ -62,6 +73,13 @@ export const formatJobElapsedText = (
 
     const distance = normalizeElapsedDistanceText(formatDistance(startedAt, now, { locale: es }))
     return `hace ${distance}`
+}
+
+export const formatElapsedSeconds = (value: number | null | undefined) => {
+    if (value == null || value < 0) return null
+    if (value === 0) return '0 segundos'
+
+    return formatDistanceStrict(new Date(0), new Date(value * 1000), { locale: es })
 }
 
 export const applyOptimisticJobStatusTransition = (job: Job, nextStatus: JobStatus, changedAt = new Date().toISOString()) => {
