@@ -1,5 +1,4 @@
-import { format, formatDistanceToNow, parseISO, differenceInCalendarDays } from 'date-fns'
-import { es } from 'date-fns/locale'
+import { format, parseISO } from 'date-fns'
 import { forwardRef, useCallback, useDeferredValue, useEffect, useImperativeHandle, useMemo, useRef, useState, startTransition, type ReactNode } from 'react'
 import { formatFullName, normalizeSearch, cn } from '@/lib/utils'
 import { ClipboardPlus, FlaskConical, Stethoscope, UserRound, Clock, CalendarCheck, Archive, Send } from 'lucide-react'
@@ -57,6 +56,7 @@ import {
 } from '@/services/supabase/queries'
 import { createLaboratoryAccess, setLaboratoryAccessActive } from '@/services/supabase/laboratoryAccess'
 import { hasUnreadJobComments } from '@/lib/jobComments'
+import { applyOptimisticJobStatusTransition, formatJobElapsedText, getJobElapsedDays } from '@/lib/jobStatusTimer'
 import type { Job, JobStatus, Laboratory, LaboratoryUser, NewJob, Specialist, Patient } from '@/types/domain'
 import { LaboratoriesTable, PatientsTable, SpecialistsTable } from './LaboratoriesSpecialistsTables'
 import ClinicSettings from '@/pages/ClinicSettings'
@@ -899,7 +899,7 @@ function DashboardPage() {
     error,
     addJob,
     reload,
-    updateLocalJobStatus,
+    updateLocalJob,
     upsertLocalJob,
     removeLocalJob,
     upsertLocalLaboratory,
@@ -1091,15 +1091,13 @@ function DashboardPage() {
       const patientPhone = patient?.phone || ''
       const orderDateValue = job.order_date ? parseISO(job.order_date) : null
       const orderDateTimestamp = orderDateValue?.getTime() ?? 0
-      const elapsedDays = orderDateValue ? differenceInCalendarDays(now, orderDateValue) : -1
+      const elapsedDays = getJobElapsedDays(job, now)
       const waUrl = patientPhone
         ? `https://wa.me/${patientPhone}?text=${encodeURIComponent(`Hola ${patientName},\nYa tenemos el trabajo (${jobDesc}) disponible en clínica.\nPor favor, contáctanos para agendar una cita.\n¡Gracias!`)}`
         : ''
       const searchText = normalizeSearch([jobDesc, patientFullName, patientCode].filter(Boolean).join(' '))
       const orderDateText = orderDateValue ? formatter.format(orderDateValue) : '-'
-      const elapsedText = orderDateValue
-        ? capitalizeFirst(formatDistanceToNow(orderDateValue, { locale: es, addSuffix: true }).replace(/\balrededor(?: de)?\s*/i, ''))
-        : '-'
+      const elapsedText = capitalizeFirst(formatJobElapsedText(job, now))
       const labDateText = orderDateValue
         ? `${weekdayFormatter.format(orderDateValue)} ${orderDateValue.getDate()} de ${monthFormatter.format(orderDateValue)}`
         : ''
@@ -1206,16 +1204,20 @@ function DashboardPage() {
     const job = jobs.find((j) => j.id === jobId)
     if (!job || job.status === status) return
 
-    const previous = job.status
+    const previous = job
+    const nextJob = applyOptimisticJobStatusTransition(job, status)
 
     // Optimistic update local state
-    updateLocalJobStatus(jobId, status)
+    updateLocalJob(nextJob)
 
     // No bloquear UI ni mostrar spinner
     updateJob(jobId, { status })
+      .then((updated) => {
+        upsertLocalJob(updated)
+      })
       .catch((err) => {
         // revert
-        updateLocalJobStatus(jobId, previous)
+        updateLocalJob(previous)
         setSnackbar({ open: true, kind: 'job', item: null, message: err instanceof Error ? err.message : 'No se pudo actualizar' })
       })
   }

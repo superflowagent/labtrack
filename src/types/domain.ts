@@ -61,7 +61,10 @@ export type Job = {
   laboratory_id: string | null
   specialist_id: string | null
   order_date: string | null
+  created_at: string
   ten_day_notification_sent_at: string | null
+  status_timer_started_at: string | null
+  status_timer_stopped_at: string | null
   status: JobStatus
   shared_notes: string | null
   clinic_last_viewed_comment_at: string | null
@@ -71,7 +74,9 @@ export type Job = {
   clinic_id: string
 }
 
-export type NewJob = Omit<Job, 'id' | 'ten_day_notification_sent_at'> & {
+export type JobCommentKind = 'comment' | 'status_change'
+
+export type NewJob = Omit<Job, 'id' | 'created_at' | 'ten_day_notification_sent_at' | 'status_timer_started_at' | 'status_timer_stopped_at'> & {
   ten_day_notification_sent_at?: string | null
 }
 
@@ -82,6 +87,10 @@ export type JobComment = {
   laboratory_id: string
   sender_role: AppRole
   body: string
+  comment_kind: JobCommentKind
+  actor_display_name: string | null
+  previous_status: JobStatus | null
+  next_status: JobStatus | null
   created_at: string
 }
 

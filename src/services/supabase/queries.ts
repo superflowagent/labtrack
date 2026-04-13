@@ -121,6 +121,17 @@ export const createJob = async (job: NewJob) => {
   return data as Job
 }
 
+export const fetchJobById = async (id: string) => {
+  const { data, error } = await supabase
+    .from('jobs')
+    .select('*')
+    .eq('id', id)
+    .single()
+
+  if (error) throw error
+  return data as Job
+}
+
 export const createLaboratory = async (payload: { name: string; phone?: string | null; email?: string | null }) => {
   const clinic = await ensureActiveClinic()
   const clinicId = clinic.id
@@ -161,15 +172,13 @@ export const createPatient = async (payload: { name: string; lastname?: string |
 }
 
 export const updateJobRecord = async (id: string, payload: Partial<NewJob>) => {
-  const { data, error } = await supabase
+  const { error } = await supabase
     .from('jobs')
     .update(payload)
     .eq('id', id)
-    .select('*')
-    .single()
 
   if (error) throw error
-  return data as Job
+  return fetchJobById(id)
 }
 
 export const updateJob = async (id: string, payload: Partial<NewJob>) => {

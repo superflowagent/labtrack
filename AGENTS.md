@@ -17,7 +17,7 @@ Este documento es la fuente de verdad absoluta para cualquier agente de IA. Esta
   - Acción Directa: No expliques lo que vas a hacer; simplemente ejecútalo.
   - Filtro Anti-Sobreingeniería: Evita complejidad innecesaria.
   - Claridad Temprana: Si un requisito es ambiguo, pregunta antes de escribir código.
-  - Validación Local: Asegúrate de que el entorno local funciona perfectamente antes de dar una tarea por finalizada si la tarea es de tamaño mediano o grande.
+  - Validación Local: Asegúrate de que el entorno local funciona perfectamente antes de dar una tarea por finalizada. Si la tarea es un simple "retoque" de algo que ya habías validado en el mismo chat, no es necesario que vuelvas a comprobar que local funciona correctamente.
   - Rendimiento ante todo: Implementa siempre la solución técnicamente superior según tu criterio.
   - Pensamiento Crítico: Si una instrucción del usuario viola estos principios o es técnicamente subóptima, adviértelo primero y propón la alternativa correcta.
 
@@ -39,10 +39,10 @@ Este documento es la fuente de verdad absoluta para cualquier agente de IA. Esta
 - **CLI Autonomy:** Usa el CLI de Supabase libremente para tareas no destructivas.
 - **Gestión de Cambios: Para cualquier cambio de esquema, RLS o configuración de Supabase:**
   1. Crea un nuevo archivo de migración..
-  2. Aplica cambios localmente con `supabase migration up`.
+  2. Aplica cambios localmente con `supabase migration up`. Hazlo antes de terminar la tarea, para poder probar en local inmediatamente.
 - **⚠️ CI/CD & Despliegue Automático:**
   - **Trigger de GitHub Actions:** Entiende que al hacer `git push`, se dispara un flujo automático (github action). La Action aplica automáticamente las nuevas migraciones a la base de datos de producción. La Action también despliega automáticamente todas las Edge Functions al servidor remoto. No intentes aplicar cambios manuales a producción vía CLI (`--remote`); confía siempre en el `git push` para sincronizar el estado.
-  - **Push como Despliegue:** No hagas `git push` a menos que se te pida explícitamente o la tarea esté terminada y validada localmente. **Push = Producción.**
+  - **Push como Despliegue:** No hagas `git push` a menos que se te pida explícitamente. **Push = Producción.**
 
 ### 🚨 RESTRICCIONES CRÍTICAS (TOLERANCIA CERO)
 - **PROHIBIDO DB RESET:** Nunca ejecutes `supabase db reset`.

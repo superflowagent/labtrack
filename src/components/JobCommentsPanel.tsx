@@ -1,8 +1,9 @@
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
-import { MessageSquareMore, Send } from 'lucide-react'
+import { ArrowRight, MessageSquareMore, Send } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
+import { StatusBadge } from '@/components/ui/status-badge'
 import { createJobComment, fetchJobComments, markJobCommentsAsSeen } from '@/services/supabase/jobComments'
 import { cn } from '@/lib/utils'
 import type { AppRole, Job, JobComment } from '@/types/domain'
@@ -101,6 +102,29 @@ export function JobCommentsPanel({ job, actorRole, onJobPatch }: JobCommentsPane
         }
 
         return comments.map((comment) => {
+            if (comment.comment_kind === 'status_change') {
+                const actorName = comment.actor_display_name || 'Alguien'
+
+                return (
+                    <div key={comment.id} className="flex justify-center">
+                        <div className="max-w-[92%] rounded-md border border-slate-200 bg-slate-100 px-3 py-2 text-center text-sm text-slate-700 shadow-sm">
+                            {comment.previous_status && comment.next_status ? (
+                                <div className="flex flex-wrap items-center justify-center gap-2 text-slate-700">
+                                    <StatusBadge status={comment.previous_status} className="bg-white" />
+                                    <ArrowRight className="h-3.5 w-3.5 text-slate-400" />
+                                    <StatusBadge status={comment.next_status} className="bg-white" />
+                                </div>
+                            ) : (
+                                <p className="whitespace-pre-wrap leading-5">{comment.body}</p>
+                            )}
+                            <div className="mt-1 text-[11px] text-slate-500">
+                                {formatTimestamp(comment.created_at)} - {actorName}
+                            </div>
+                        </div>
+                    </div>
+                )
+            }
+
             const isOwn = comment.sender_role === actorRole
 
             return (

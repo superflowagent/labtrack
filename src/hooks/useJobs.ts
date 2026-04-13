@@ -39,8 +39,8 @@ export const useJobs = (clinicName: string) => {
     return clinicId
   }, [])
 
-  const updateLocalJobStatus = useCallback((jobId: string, status: Job['status']) => {
-    setJobs((prevJobs) => prevJobs.map((job) => (job.id === jobId ? { ...job, status } : job)))
+  const updateLocalJob = useCallback((job: Job) => {
+    setJobs((prevJobs) => sortJobs([job, ...prevJobs.filter((currentJob) => currentJob.id !== job.id)]))
   }, [])
 
   const upsertLocalJob = useCallback((job: Job) => {
@@ -124,7 +124,7 @@ export const useJobs = (clinicName: string) => {
       error,
       reload: load,
       addJob,
-      updateLocalJobStatus,
+      updateLocalJob,
       upsertLocalJob,
       removeLocalJob,
       upsertLocalLaboratory,
@@ -140,7 +140,7 @@ export const useJobs = (clinicName: string) => {
       error,
       load,
       addJob,
-      updateLocalJobStatus,
+      updateLocalJob,
       upsertLocalJob,
       removeLocalJob,
       upsertLocalLaboratory,

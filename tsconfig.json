@@ -1,14 +1,16 @@
 {
   "compilerOptions": {
-    "baseUrl": ".",
     "paths": {
       "@/*": [
-        "src/*"
+        "./src/*"
       ]
     }
   },
   "files": [],
-  "exclude": ["supabase/functions", "supabase/migrations"],
+  "exclude": [
+    "supabase/functions",
+    "supabase/migrations"
+  ],
   "references": [
     {
       "path": "./tsconfig.app.json"

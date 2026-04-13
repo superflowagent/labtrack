@@ -4,7 +4,7 @@ import type { AppRole, Job, JobComment } from '@/types/domain'
 export const fetchJobComments = async (jobId: string) => {
     const { data, error } = await supabase
         .from('job_comments')
-        .select('id, job_id, clinic_id, laboratory_id, sender_role, body, created_at')
+        .select('id, job_id, clinic_id, laboratory_id, sender_role, body, comment_kind, actor_display_name, previous_status, next_status, created_at')
         .eq('job_id', jobId)
         .order('created_at', { ascending: true })
 
@@ -25,8 +25,10 @@ export const createJobComment = async (job: Job, senderRole: AppRole, body: stri
             laboratory_id: job.laboratory_id,
             sender_role: senderRole,
             body,
+            comment_kind: 'comment',
+            actor_display_name: window.actorDisplayName ?? null,
         })
-        .select('id, job_id, clinic_id, laboratory_id, sender_role, body, created_at')
+        .select('id, job_id, clinic_id, laboratory_id, sender_role, body, comment_kind, actor_display_name, previous_status, next_status, created_at')
         .single()
 
     if (error) throw error

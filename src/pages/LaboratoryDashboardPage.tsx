@@ -1,5 +1,4 @@
-import { differenceInCalendarDays, formatDistanceToNow, parseISO } from 'date-fns'
-import { es } from 'date-fns/locale'
+import { parseISO } from 'date-fns'
 import { useCallback, useEffect, useMemo, useState, startTransition } from 'react'
 import { Archive, ClipboardList, FlaskConical, Send, Settings } from 'lucide-react'
 import { JobCommentsPanel } from '@/components/JobCommentsPanel'
@@ -33,6 +32,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useActor } from '@/contexts/ActorContext'
 import { useLaboratoryJobs } from '@/hooks/useLaboratoryJobs'
 import { hasUnreadJobComments } from '@/lib/jobComments'
+import { applyOptimisticJobStatusTransition, formatJobElapsedText, getJobElapsedDays } from '@/lib/jobStatusTimer'
 import { createClinicNotificationForLabStatus } from '@/services/supabase/notifications'
 import { updateJobRecord } from '@/services/supabase/queries'
 import { cn, formatFullName, normalizeSearch } from '@/lib/utils'
@@ -41,6 +41,8 @@ import type { Job, JobStatus } from '@/types/domain'
 type LaboratoryVisibleStatus = 'En laboratorio' | 'En envío' | 'Cerrado'
 
 const STATUSES: LaboratoryVisibleStatus[] = ['En laboratorio', 'En envío', 'Cerrado']
+
+const capitalizeFirst = (value?: string) => (value ? value.charAt(0).toUpperCase() + value.slice(1) : value)
 
 const getLaboratoryVisibleStatus = (status: JobStatus): LaboratoryVisibleStatus => {
     switch (status) {
@@ -204,14 +206,14 @@ function LaboratoryDashboardPage() {
         const patient = job.patient_id ? patientsById[job.patient_id] : undefined
         const fullName = formatFullName(patient?.name, patient?.lastname)
         const orderDate = job.order_date ? parseISO(job.order_date) : null
-        const elapsedDays = orderDate ? differenceInCalendarDays(now, orderDate) : -1
+        const elapsedDays = getJobElapsedDays(job, now)
         return {
             job,
             visibleStatus: getLaboratoryVisibleStatus(job.status),
             patientName: fullName,
             searchText: normalizeSearch(`${fullName} ${job.job_description || ''}`),
             orderDateText: orderDate ? orderDate.toLocaleDateString('es-ES') : '-',
-            elapsedText: orderDate ? formatDistanceToNow(orderDate, { addSuffix: true, locale: es }) : '-',
+            elapsedText: capitalizeFirst(formatJobElapsedText(job, now)),
             elapsedDays,
             hasUnreadComments: hasUnreadJobComments(job, 'laboratory'),
         }
@@ -260,7 +262,7 @@ function LaboratoryDashboardPage() {
         if (!job || job.status !== 'En laboratorio') return
 
         const previous = job
-        const nextJob = { ...job, status: 'En envío' as JobStatus }
+        const nextJob = applyOptimisticJobStatusTransition(job, 'En envío')
         updateLocalJob(nextJob)
         setSavingJobId(jobId)
 

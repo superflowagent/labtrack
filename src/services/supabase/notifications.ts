@@ -1,5 +1,5 @@
-import { differenceInCalendarDays, parseISO } from 'date-fns'
 import { supabase } from './client'
+import { getJobElapsedDays } from '@/lib/jobStatusTimer'
 import type { AppActor, AppNotification, Job } from '@/types/domain'
 
 const TEN_DAY_THRESHOLD = 10
@@ -11,9 +11,10 @@ const isUniqueViolationError = (error: unknown) => {
 type InsertTenDayNotificationResult = 'created' | 'exists'
 
 const hasReachedTenDaysElapsed = (job: Job) => {
-    if (!job.order_date || !job.laboratory_id) return false
+    if (!job.laboratory_id) return false
+    if (job.status === 'Cerrado') return false
     if (job.ten_day_notification_sent_at) return false
-    return differenceInCalendarDays(new Date(), parseISO(job.order_date)) >= TEN_DAY_THRESHOLD
+    return getJobElapsedDays(job, new Date()) >= TEN_DAY_THRESHOLD
 }
 
 const markJobTenDayNotificationTriggered = async (jobId: string) => {
